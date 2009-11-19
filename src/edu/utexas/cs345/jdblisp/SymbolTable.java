@@ -5,48 +5,65 @@ package edu.utexas.cs345.jdblisp;
  * @author Jonathan Bernard (jdbernard@gmail.com)
  */
 public class SymbolTable {
-    public final TableEntry top;
-    public final SymbolTable rest;
 
-    public SymbolTable(TableEntry te, SymbolTable st) {
-        this.top = te;
-        this.rest = st;
+    private Map<Symbol, FunctionEntry> functions = new HashMap<Symbol, FunctionEntry>();
+    private Map<Symbol, VariableEntry> variables = new HashMap<Symbol, VariableEntry>();
+    private SymbolTable enclosingTable;
+    private boolean locked = false;
+
+    public SymbolTable() { this(null, false); }
+
+    public SymbolTable(SymbolTable table) { this(table, false); }
+
+    public SymbolTable(SymbolTable table, boolean locked) {
+        this.enclosingTable = table;
+        this.locked = locked;
     }
 
-    public SymbolTable(TableEntry... te) {
-        int idx = te.length;
-        SymbolTable last = null;
-        while (idx > 1) last = new SymbolTable(te[--idx], last);
-
-        assert (--idx == 0) : "Error in SymbolTable construction. "
-            + "Invalid ending index";
-
-        this.top = te[0];
-        this.rest = last;
+    public Symbol defineFunction(Symbol s, FunctionEntry f) {
+        if (functions.get(s) != null) {
+            // TODO: warning: function redefinition
+            // Also, check access permissions
+        }
+        functions.put(s, f);
+        return s;
     }
 
-    public TableEntry findFunction(Symbol symbol) throws LispException {
-        if (top.name.equals(symbol) && top.parameters != null)
-            return top;
+    public Symbol defineVariable(Symbol s, VariableEntry v) {
+        if (variables.get(s) != null) {
+            // TODO: warning: variable redefinition
+            // Also, check access permissions
+        }
 
-        if (rest == null)
-            throw new LispException("Undefined function: "
-                + symbol.name);
-
-        return rest.findFunction(symbol);
+        variables.put(s, v);
+        return s;
     }
 
-    public TableEntry findVariable(Symbol symbol) throws LispException {
-        // if this entry is the one we're looking for, return it
-        if (top.name.equals(symbol) && top.parameters == null)
-            return top;
+    public FunctionEntry lookupFunction(Symbol s) throws LispException {
+        FunctionEntry fe = functions.get(s);
 
-        // if not, and there are no more entries
-        if (rest == null)
-            throw new LispException("Undefined variable: "
-                + symbol.name);
+        // found function definition
+        if (fe != null) return fe;
 
-        // otherwise, search the remainder of the table
-        return rest.findVariable(symbol);
+        // did not find function, and there is no outer scope
+        if (enclosingTable == null)
+            throw new LispException("Undefined function " + s.toString());
+
+        // search outer scope
+        return enclosingTable.lookupFunction(s);
+    }
+
+    public VariableEntry lookupVariable(Symbol s) throws LispException {
+        VariableEntry ve = variables.get(s);
+
+        // found variable entry
+        if (ve != null) return ve;
+
+        // did not find variable entry and there is no outer scope
+        if (enclosingTable == null)
+            throw new LispException("Undefined variable " + s.toString());
+
+        // search outer scope
+        return enclosingTable.lookupVariable(s);
     }
 }

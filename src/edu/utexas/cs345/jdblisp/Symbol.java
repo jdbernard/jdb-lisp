@@ -19,4 +19,18 @@ public class Symbol implements SExp {
     public String display(String offset) {
         return offset + "Symbol: " + name + "\n";
     }
+
+    @Override
+    public String toString() { return name; }
+
+    @Override
+    public boolean equals(Object that) {
+        if (this == that) return true;
+        if (that == null) return false;
+        if (!(that instanceof Symbol)) return false;
+        return this.name.equals(((Symbol) that).name);
+    }
+
+    @Override
+    public int hashCode() { return name.hashCode(); }
 }
