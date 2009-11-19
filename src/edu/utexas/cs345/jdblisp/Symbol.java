@@ -1,4 +1,5 @@
-package edu.utexas.cs345.jdblisp.data;
+package edu.utexas.cs345.jdblisp;
+
 /**
  * @author Jonathan Bernard (jdbernard@gmail.com)
  */
@@ -9,8 +10,13 @@ public class Symbol implements SExp {
         this.name = name;
     }
 
-    public SExp eval(SExp sexp, SymbolTable table) {
+    /** {@inheritdoc}*/
+    public SymbolTable eval(SymbolTable table) {
         // TODO
         return null;
+    }
+
+    public String display(String offset) {
+        return offset + "Symbol: " + name + "\n";
     }
 }

@@ -8,7 +8,7 @@ options {
 PARSER_BEGIN(Parser)
 package edu.utexas.cs345.jdblisp.parser;
 
-import edu.utexas.cs345.jdblisp.data.*;
+import edu.utexas.cs345.jdblisp.*;
 public class Parser {
 
 }
@@ -44,9 +44,9 @@ TOKEN : /* LITERALS & SYMBOLS */
 SExp sexp():
 {	SExp s = null; Token t;
 }
-{     t = <SYMB> { return new Symbol(t); }
-    | t = <STRG> { return new Str(t); }
-    | t = <NUMB> { return new Num(t); }
+{     t = <SYMB> { return new Symbol(t.image.toUpperCase()); }
+    | t = <STRG> { return new Str(t.image); }
+    | t = <NUMB> { return new Num(t.image); }
     | s = list() { return s; }     
 }
 
@@ -56,7 +56,7 @@ SExp sexp():
 List list(): 
 {	Seq s;
 }
-{ <LPAREN>  s = seq() <RPAREN> { return (s == null) ? null : new List(s); }    
+{ <LPAREN>  s = seq() <RPAREN> { return new List(s); }    
 }
 
 /**
