@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project name="Common Build Versioning" >
+    <property name="cbv-basedir" value="nbproject" />
+
+    <target name="-cbv-init">
+        <property file="${cbv-basedir}/project.versioning.properties" />
+    </target>
+
+    <target name="-pre-set-version" />
+    <target name="-do-set-version">
+        <input message="Current version is ${application.version}. Enter new version: " addproperty="new-version"/>
+        <propertyfile file="${cbv-basedir}/project.versioning.properties">
+            <entry key="application.version" value="${new-version}" />
+            <entry key="build.number" value="0" />
+        </propertyfile>
+        <property file="${cbv-basedir}/project.versioning.properties" />
+    </target>
+    <target name="-post-set-version" />
+    <target name="set-version" depends="-cbv-init,-pre-set-version,-do-set-version,-post-set-version"/>
+
+    <target name="increment-build-number">
+        <propertyfile file="${cbv-basedir}/project.versioning.properties">
+            <entry key="build.number" operation="+" type="int" default="0"/>
+        </propertyfile>
+        <property file="${cbv-basedir}/project.versioning.properties" />
+    </target>
+
+</project>

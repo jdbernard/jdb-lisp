@@ -1,0 +1,71 @@
+/**
+ * Grammer and parser definition for JDB-Lisp
+ */
+ 
+options {
+  JDK_VERSION = "1.5";
+}
+PARSER_BEGIN(Parser)
+package edu.utexas.cs345.jdblisp.parser;
+
+import edu.utexas.cs345.jdblisp.data.*;
+public class Parser {
+
+}
+
+PARSER_END(Parser)
+
+SKIP : /* WHITE SPACE */
+{ 	" "
+|	"\r"
+|	"\t"
+|	"\n"
+|   "\n\r"
+}
+
+TOKEN : /* PUNCTUATION */
+{	< LPAREN: "(" >
+|	< RPAREN: ")" >
+
+}
+
+TOKEN : /* LITERALS & SYMBOLS */
+{   < NUMB: (["+", "-"])? (["0"-"9"])+ ("." (["0"-"9"])+ )? >
+|   < STRG: "\"" (["A"-"Z", "a"-"z", "_"])* "\"" >
+|	< SYMB: ([	"A"-"Z", 
+				"a"-"z", 
+				"_", 
+				"+", "-", "*", "/", "="])+ >
+}
+
+/**
+ * SExp -> Symbol | Str | Num | List | "'" SExp
+ */
+SExp sexp():
+{	SExp s = null; Token t;
+}
+{     t = <SYMB> { return new Symbol(t); }
+    | t = <STRG> { return new Str(t); }
+    | t = <NUMB> { return new Num(t); }
+    | s = list() { return s; }     
+}
+
+/**
+ * List -> "(" Seq ")"
+ */
+List list(): 
+{	Seq s;
+}
+{ <LPAREN>  s = seq() <RPAREN> { return (s == null) ? null : new List(s); }    
+}
+
+/**
+ * Seq -> null | SExp Seq
+ */
+ Seq seq():
+ {	Seq sq; SExp se;
+ }
+ {  [ se = sexp() sq = seq() { return new Seq(se, sq); } ]
+ 	    
+ 	{ return null; }
+ }

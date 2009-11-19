@@ -1,0 +1,49 @@
+<project name="Gammon-Bernard Common Lisp" default="dist" basedir=".">
+    <property file="project.properties"/>
+    <import file="build-common-versioning.xml"/>
+
+    <!-- This path represents all compile-time dependancies -->
+    <path id="javac.path">
+        <fileset dir="${lib.dir}">
+            <include name="**/*.jar"/>
+        </fileset>
+    </path>
+
+    <!-- This path represents all run-time dependancies -->
+    <path id="java.path">
+        <path refid="javac.path"/>
+        <pathelement path="${build.dir}"/>
+    </path>
+
+    <target name="init">
+        <tstamp/>
+    </target>
+
+    <target name="clean" depends="init">
+        <delete dir="${build.dir}"/>
+        <delete dir="${grammar.output.dir}"/>
+        <delete dir="${dist.dir}"/>
+    </target>
+
+    <target name="compile-parser" depends="init">
+        <mkdir dir="${grammar.output.dir}"/>
+        <javacc
+            target="${grammar.file}"
+            javacchome="/usr/share/java"
+            outputdirectory="${grammar.output.dir}"/>
+    </target>
+
+    <target name="compile" depends="compile-parser">
+        <!-- Make build directory if it does not exist -->
+        <mkdir dir="${build.dir}"/>
+
+        <!-- Compile all sources to build directory -->
+        <javac
+            srcdir="${src.dir}"
+            destdir="${build.dir}"
+            classpathref="javac.path"/>
+
+    </target>
+
+    <target name="dist" depends="init,compile"/>
+</project>
