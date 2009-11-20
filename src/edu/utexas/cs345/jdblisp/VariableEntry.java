@@ -10,7 +10,7 @@ public class VariableEntry {
 
     public VariableEntry(SExp expression) { this.expression = expression; }
     
-    public SExp eval(SymbolTable symbolTable) {
+    public SExp eval(SymbolTable symbolTable) throws LispException {
         return expression.eval(symbolTable);
     }
 }

@@ -24,6 +24,7 @@ public class Str implements SExp {
         return offset + "Str: " + value + "\n";
     }
 
+    @Override
     public String toString() {
         return value;
     }

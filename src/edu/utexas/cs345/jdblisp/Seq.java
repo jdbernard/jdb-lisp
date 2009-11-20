@@ -46,4 +46,9 @@ public class Seq implements SExp {
 
         return sb.toString();
     }
+
+    @Override
+    public String toString() {
+        return car.toString() + (cdr == null ? "" : cdr.toString());
+    }
 }

@@ -1,7 +1,8 @@
-package edu.utexas.cs345.jdb-lisp;
+package edu.utexas.cs345.jdblisp;
 
 /**
  * InvalidArgumentQuantityException
+ * @author Jonathan Bernard (jdbernard@gmail.com)
  * Indicates a call to a form with an incorrect number of arguments.
  */
 public class InvalidArgumentQuantityException extends LispException {

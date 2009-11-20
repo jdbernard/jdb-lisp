@@ -1,5 +1,8 @@
 package edu.utexas.cs345.jdblisp;
 
+import java.util.HashMap;
+import java.util.Map;
+
 /**
  * SymbolTable
  * @author Jonathan Bernard (jdbernard@gmail.com)

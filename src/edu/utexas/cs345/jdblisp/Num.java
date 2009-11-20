@@ -36,7 +36,7 @@ public class Num implements SExp {
     }
 
     /** {@inheritdoc} */
-    public SymbolTable eval(SymbolTable table) {
+    public SExp eval(SymbolTable table) {
         return new SymbolTable(
             new TableEntry(
                 new Symbol("RETURN-VAL"),
@@ -48,6 +48,7 @@ public class Num implements SExp {
         return offset + "Num: " + n.toString() + "\n";
     }
 
+    @Override
     public String toString() {
         return n.toString();
     }

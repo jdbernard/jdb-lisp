@@ -18,7 +18,7 @@ public class FunctionEntry {
 
         // bind arguments to parameters
         SymbolTable localScope = new SymbolTable(symbolTable);
-        int i = 0
+        int i = 0;
         while (i < parameters.length) {
 
             // too few arguments

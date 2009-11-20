@@ -1,6 +1,7 @@
 package edu.utexas.cs345.jdblisp;
 
 /**
+ * List
  * @author Jonathan Bernard (jdbernard@gmail.com)
  */
 public class List implements SExp {
@@ -40,6 +41,11 @@ public class List implements SExp {
         if (seq == null) sb.append(offset + "  NIL\n");
         else sb.append(seq.display(offset + "  "));
         return sb.toString();
+    }
+
+    @Override
+    public String toString() {
+        return "(" + (seq == null ? "" : seq.toString()) + ")";
     }
 
 }

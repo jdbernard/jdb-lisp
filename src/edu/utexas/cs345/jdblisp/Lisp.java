@@ -26,12 +26,13 @@ public class Lisp {
     public Lisp(boolean interactive) {
         this.interactive = interactive;
         Parser parser = new Parser(new ByteArrayInputStream(new byte[]{}));
+        globalSymbolTable = new SymbolTable();
+        SpecialFormEntry.defineSpecialForms(this);
     }
 
     public static void main(String[] args) {
         Lisp lisp = new Lisp();
         lisp.repl(System.in, System.out);
-        globalSymbolTable = SpecialForms.createSymbolTable();
     }
 
     public void repl(InputStream is, OutputStream os) {
@@ -68,7 +69,6 @@ public class Lisp {
             }
 
             out.println(sexp.display("  "));
-            out.println(sexp.eval(globalSymbolTable).car.body);
 
             // print prompt if applicable
             if (interactive) {
