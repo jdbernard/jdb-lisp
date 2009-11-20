@@ -27,7 +27,7 @@ public class FunctionEntry implements FormEntry {
                     parameters.length, i);
 
             // bind one arg to param
-            localScope.bind(parameters[i], new VariableEntry(arguments.car));
+            localScope.bind(parameters[i], new VariableEntry(arguments.car.eval(symbolTable)));
 
             arguments = arguments.cdr;
             ++i;

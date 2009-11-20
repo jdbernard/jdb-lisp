@@ -11,9 +11,9 @@ public class Symbol implements SExp {
     }
 
     /** {@inheritdoc}*/
-    public SExp eval(SymbolTable table) {
-        // TODO
-        return null;
+    public SExp eval(SymbolTable table) throws LispException {
+        VariableEntry ve = table.lookupVariable(this);
+        return ve.eval(table);
     }
 
     public String display(String offset) {

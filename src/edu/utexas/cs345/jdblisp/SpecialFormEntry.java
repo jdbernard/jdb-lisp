@@ -112,6 +112,7 @@ public abstract class SpecialFormEntry implements FormEntry {
                     } catch (ClassCastException cce) {
                         throw new TypeException(arguments.car, Num.class);
                     }
+                    arguments = arguments.cdr;
                 }
 
                 return sum;
@@ -150,6 +151,7 @@ public abstract class SpecialFormEntry implements FormEntry {
                     } catch (ClassCastException cce) {
                         throw new TypeException(arguments.car, Num.class);
                     }
+                    arguments = arguments.cdr;
                 }
 
                 return difference;
@@ -170,6 +172,7 @@ public abstract class SpecialFormEntry implements FormEntry {
                     } catch (ClassCastException cce) {
                         throw new TypeException(arguments.car, Num.class);
                     }
+                    arguments = arguments.cdr;
                 }
 
                 return product;
@@ -208,6 +211,7 @@ public abstract class SpecialFormEntry implements FormEntry {
                     } catch (ClassCastException cce) {
                         throw new TypeException(arguments.car, Num.class);
                     }
+                    arguments = arguments.cdr;
                 }
 
                 return dividend;

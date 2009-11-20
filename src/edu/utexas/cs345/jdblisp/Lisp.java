@@ -68,8 +68,11 @@ public class Lisp {
                 continue;
             }
 
+            // DEBUG: print abstract syntax TODO: remove
+            out.println(sexp.display("  "));
+            out.flush();
+
             try {
-                out.println(sexp.display("  "));
                 out.println(sexp.eval(globalSymbolTable));
             } catch (LispException le) {
                 out.println(le.getLocalizedMessage());
