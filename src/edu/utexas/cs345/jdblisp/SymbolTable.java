@@ -20,7 +20,7 @@ public class SymbolTable {
         this.locked = locked;
     }
 
-    public Symbol defineFunction(Symbol s, FunctionEntry f) {
+    public Symbol bind(Symbol s, FunctionEntry f) {
         if (functions.get(s) != null) {
             // TODO: warning: function redefinition
             // Also, check access permissions
@@ -29,7 +29,7 @@ public class SymbolTable {
         return s;
     }
 
-    public Symbol defineVariable(Symbol s, VariableEntry v) {
+    public Symbol bind(Symbol s, VariableEntry v) {
         if (variables.get(s) != null) {
             // TODO: warning: variable redefinition
             // Also, check access permissions

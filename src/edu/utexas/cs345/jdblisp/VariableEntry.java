@@ -8,6 +8,8 @@ public class VariableEntry {
 
     protected final SExp expression;
 
+    public VariableEntry(SExp expression) { this.expression = expression; }
+    
     public SExp eval(SymbolTable symbolTable) {
         return expression.eval(symbolTable);
     }

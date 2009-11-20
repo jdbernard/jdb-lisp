@@ -17,29 +17,16 @@ public class List implements SExp {
             // then that symbol is the name of an operator
             // Depending on the funciton binding of the operator in the
             // current lexical environment the form is either:
+
             // a special form
             // a macro form or
             // a function form
 
             // look up in the symbol table
-            TableEntry functionEntry = table.findFunction((Symbol) seq.car);
-
-            // check parameter length
-            if (functionEntry.parameters.length != seq.cdr.length())
-                throw new LispException("Invalid number of parameters: "
-                    + seq.cdr.length());
-
-            // create a new SymbolTable and bind arguments to parameters
-            SymbolTable newTable = table;
-            Seq nextArg = seq.cdr;
-            for (Symbol parameter : functionEntry.parameters) {
-                TableEntry newEntry = new TableEntry(parameter, null, nextArg.car);
-                newTable = new SymbolTable(newEntry, newTable);
-                nextArg = nextArg.cdr;
-            }
+            FunctionEntry functionEntry = table.lookupFunction((Symbol) seq.car);
 
             // call function
-            return functionEntry.body.eval(newTable);
+            return functionEntry.call(table);
 
         }
 

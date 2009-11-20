@@ -14,8 +14,9 @@ import edu.utexas.cs345.jdblisp.parser.ParseException;
  */
 public class Lisp {
 
+    public SymbolTable globalSymbolTable;
+
     private Parser parser;
-    private SymbolTable globalSymbolTable;
     private boolean interactive = true;
 
     public Lisp() {
