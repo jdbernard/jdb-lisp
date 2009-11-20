@@ -11,7 +11,7 @@ public class Symbol implements SExp {
     }
 
     /** {@inheritdoc}*/
-    public SymbolTable eval(SymbolTable table) {
+    public SExp eval(SymbolTable table) {
         // TODO
         return null;
     }

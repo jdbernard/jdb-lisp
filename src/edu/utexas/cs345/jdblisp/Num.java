@@ -8,10 +8,10 @@ import java.math.BigInteger;
  */
 public class Num implements SExp {
 
-    private Number n;
+    private BigDecimal n;
 
     public Num(String string) {
-        try { n = Short.parseShort(string); return; }
+        /*try { n = Short.parseShort(string); return; }
         catch (NumberFormatException nfe) {}
 
         try { n = Integer.parseInt(string); return; }
@@ -28,20 +28,18 @@ public class Num implements SExp {
 
         try { n = Double.parseDouble(string); return; }
         catch (NumberFormatException nfe) {}
-
+*/
         try { n = new BigDecimal(string); return; }
         catch (NumberFormatException nfe) {
-            throw new LispException("Cannot parse number: " + string);
+            assert(false);
         }
     }
 
+    public Num(BigDecimal n) { this.n = n; }
+
     /** {@inheritdoc} */
     public SExp eval(SymbolTable table) {
-        return new SymbolTable(
-            new TableEntry(
-                new Symbol("RETURN-VAL"),
-                null,
-                this));
+        return this;
     }
 
     public String display(String offset) {
@@ -51,5 +49,29 @@ public class Num implements SExp {
     @Override
     public String toString() {
         return n.toString();
+    }
+
+    public Num add(Num addend) {
+        return new Num(n.add(addend.n));
+    }
+
+    public Num subtract(Num subtrahend) {
+        return new Num(n.subtract(subtrahend.n));
+    }
+
+    public Num multiply(Num multiplicand) {
+        return new Num(n.multiply(multiplicand.n));
+    }
+
+    public Num divideBy(Num divisor) {
+        return new Num(n.divide(divisor.n));
+    }
+
+    public Num negate() {
+        return new Num(n.negate());
+    }
+
+    public Num abs() {
+        return new Num(n.abs());
     }
 }

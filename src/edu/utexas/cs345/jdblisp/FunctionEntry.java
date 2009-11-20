@@ -4,7 +4,7 @@ package edu.utexas.cs345.jdblisp;
  * FunctionEntry
  * @author Jonathan Bernard (jdbernard@gmail.com)
  */
-public class FunctionEntry {
+public class FunctionEntry implements FormEntry {
 
     protected final Symbol[] parameters;
     protected final SExp body;

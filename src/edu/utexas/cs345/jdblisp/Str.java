@@ -12,13 +12,7 @@ public class Str implements SExp {
     }
 
     /** {@inheritdoc}*/
-    public SymbolTable eval(SymbolTable table) {
-        return new SymbolTable(
-            new TableEntry(
-                "RETURN-VAL",
-                null,
-                this));
-    }
+    public SExp eval(SymbolTable table) { return this; }
 
     public String display(String offset) {
         return offset + "Str: " + value + "\n";

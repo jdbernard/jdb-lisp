@@ -68,7 +68,12 @@ public class Lisp {
                 continue;
             }
 
-            out.println(sexp.display("  "));
+            try {
+                out.println(sexp.display("  "));
+                out.println(sexp.eval(globalSymbolTable));
+            } catch (LispException le) {
+                out.println(le.getLocalizedMessage());
+            }
 
             // print prompt if applicable
             if (interactive) {
@@ -77,6 +82,9 @@ public class Lisp {
             }
 
         }
+
+        out.println("\nLeaving JDB-LISP");
+        out.flush();
     }
 
 }

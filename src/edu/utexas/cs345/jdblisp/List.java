@@ -12,7 +12,7 @@ public class List implements SExp {
     }
 
     /** {@inheritdoc}*/
-    public SymbolTable eval(SymbolTable table) throws LispException {
+    public SExp eval(SymbolTable table) throws LispException {
         // if the car of the sequence is a symbol, 
         if (seq.car instanceof Symbol) {
             // then that symbol is the name of an operator
@@ -24,10 +24,10 @@ public class List implements SExp {
             // a function form
 
             // look up in the symbol table
-            FunctionEntry functionEntry = table.lookupFunction((Symbol) seq.car);
+            FormEntry functionEntry = table.lookupFunction((Symbol) seq.car);
 
             // call function
-            return functionEntry.call(table);
+            return functionEntry.call(table, seq.cdr);
 
         }
 

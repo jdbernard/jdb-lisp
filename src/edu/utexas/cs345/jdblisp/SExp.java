@@ -11,7 +11,7 @@ public interface SExp {
      * @param table The SymbolTable context for this scope.
      * @return A SymbolTable containing the reutrn value.
      */
-    SymbolTable eval(SymbolTable table) throws LispException;
+    SExp eval(SymbolTable table) throws LispException;
 
     String display(String offset);
 

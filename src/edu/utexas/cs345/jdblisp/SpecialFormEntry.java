@@ -6,7 +6,7 @@ import java.util.ArrayList;
  * SpecialFormEntry
  * @author Jonathan Bernard (jdbernard@gmail.com)
  */
-public abstract class SpecialFormEntry extends FunctionEntry {
+public abstract class SpecialFormEntry implements FormEntry {
 
     protected Lisp environment;
 
@@ -21,7 +21,7 @@ public abstract class SpecialFormEntry extends FunctionEntry {
             public SExp call(SymbolTable symbolTable, Seq arguments) throws LispException {
 
                 Symbol functionName;
-                ArrayList<Symbol> parameters;
+                ArrayList<Symbol> parameters = new ArrayList<Symbol>();
                 SExp body;
 
                 // TODO: check to see if a function for this symbol exists
@@ -40,18 +40,17 @@ public abstract class SpecialFormEntry extends FunctionEntry {
                 arguments = arguments.cdr;
                 assert (arguments != null);
                 
-                if (!(arguments.car instanceof List))
+                //if (!(arguments.car instanceof List))
                     // TODO: error, need parameter list
 
                 // read parameters
-                parameters = new ArrayList<Symbol>();
                 Seq paramSeq = ((List) arguments.car).seq;
-                while (seq != null) {
-                    if (!(seq.car instanceof Symbol))
-                        throw new TypeException(seq.car, Symbol.class);
+                while (paramSeq != null) {
+                    if (!(paramSeq.car instanceof Symbol))
+                        throw new TypeException(paramSeq.car, Symbol.class);
 
-                    parameters.add((Symbol) seq.car);
-                    seq = seq.cdr;
+                    parameters.add((Symbol) paramSeq.car);
+                    paramSeq = paramSeq.cdr;
                 }
 
                 // third argument: function body
@@ -62,7 +61,7 @@ public abstract class SpecialFormEntry extends FunctionEntry {
                 
                 body = arguments.car;
 
-                environment.globalSymbolTable.define(functionName,
+                environment.globalSymbolTable.bind(functionName,
                     new FunctionEntry(parameters.toArray(new Symbol[]{}), body));
 
                 return functionName;
@@ -82,7 +81,7 @@ public abstract class SpecialFormEntry extends FunctionEntry {
                         arguments.length());
 
                 // first argument: Symbol for variable name
-                if (!(arguments.car instanceof Symbol))
+                //if (!(arguments.car instanceof Symbol))
                     // TODO: error: expected symbol
 
                 variableName = (Symbol) arguments.car;
@@ -92,10 +91,134 @@ public abstract class SpecialFormEntry extends FunctionEntry {
                 assert (arguments != null);
 
                 variableValue = arguments.car;
+
+                environment.globalSymbolTable.bind(variableName,
+                    new VariableEntry(variableValue));
+
+                return variableValue;
             }
         };
 
-        environment.globalSymbolTable.defin(new Symbol("DEFUN"), DEFUN);
-        environment.globalSymbolTable.defin(new Symbol("SETQ"), SETQ);
+        SpecialFormEntry SUM = new SpecialFormEntry(environment) {
+            public SExp call(SymbolTable symbolTable, Seq arguments)
+            throws LispException {
+
+                Num sum = new Num("0");
+
+                // variable number of arguments [0..inf)
+                while (arguments != null) {
+                    try {
+                        sum = sum.add((Num) arguments.car.eval(symbolTable));
+                    } catch (ClassCastException cce) {
+                        throw new TypeException(arguments.car, Num.class);
+                    }
+                }
+
+                return sum;
+            }
+        };
+
+        SpecialFormEntry DIF = new SpecialFormEntry(environment) {
+            public SExp call(SymbolTable symbolTable, Seq arguments)
+            throws LispException {
+
+                Num difference = new Num("0");
+
+                // need at least one argument
+                if (arguments == null)
+                    throw new InvalidArgumentQuantityException(1, 0);
+
+                // case: only one argument: 0 - arg
+                try {
+                    difference = difference.subtract(
+                        (Num) arguments.car.eval(symbolTable));
+                } catch (ClassCastException cce) {
+                    throw new TypeException(arguments.car, Num.class);
+                }
+
+                arguments = arguments.cdr;
+                if (arguments == null) return difference;
+
+                // case: (- x y1 ... yn)
+                difference = difference.negate();
+
+                // variable number of arguments [0..inf)
+                while (arguments != null)  {
+                    try {
+                        difference = difference.subtract(
+                            (Num) arguments.car.eval(symbolTable));
+                    } catch (ClassCastException cce) {
+                        throw new TypeException(arguments.car, Num.class);
+                    }
+                }
+
+                return difference;
+            }
+        };
+
+        SpecialFormEntry MUL = new SpecialFormEntry(environment) {
+            public SExp call(SymbolTable symbolTable, Seq arguments)
+            throws LispException {
+
+                Num product = new Num("1");
+
+                // variable number of arguments [0..inf)
+                while (arguments != null) {
+                    try {
+                        product = product.multiply(
+                            (Num) arguments.car.eval(symbolTable));
+                    } catch (ClassCastException cce) {
+                        throw new TypeException(arguments.car, Num.class);
+                    }
+                }
+
+                return product;
+            }
+        };
+
+        SpecialFormEntry DIV = new SpecialFormEntry(environment) {
+            public SExp call(SymbolTable symbolTable, Seq arguments)
+            throws LispException {
+
+                Num dividend = new Num("1");
+                Num firstArg;
+
+                if (arguments == null)
+                    throw new InvalidArgumentQuantityException(1, 0);
+
+                // case: only one argument: 1 / arg
+                try { firstArg = (Num) arguments.car.eval(symbolTable); }
+                catch (ClassCastException cce) {
+                    throw new TypeException(arguments.car, Num.class);
+                }
+
+                dividend = dividend.divideBy(firstArg);
+
+                arguments = arguments.cdr;
+                if (arguments == null) return dividend;
+
+                // case: (/ x y1 ... yn)
+                dividend = firstArg;
+
+                // variable number of arguments [0..inf)
+                while (arguments != null) {
+                    try {
+                        dividend = dividend.divideBy(
+                            (Num) arguments.car.eval(symbolTable));
+                    } catch (ClassCastException cce) {
+                        throw new TypeException(arguments.car, Num.class);
+                    }
+                }
+
+                return dividend;
+            }
+        };
+
+        environment.globalSymbolTable.bind(new Symbol("DEFUN"), DEFUN);
+        environment.globalSymbolTable.bind(new Symbol("SETQ"), SETQ);
+        environment.globalSymbolTable.bind(new Symbol("+"), SUM);
+        environment.globalSymbolTable.bind(new Symbol("-"), DIF);
+        environment.globalSymbolTable.bind(new Symbol("*"), MUL);
+        environment.globalSymbolTable.bind(new Symbol("/"), DIV);
     }
 }

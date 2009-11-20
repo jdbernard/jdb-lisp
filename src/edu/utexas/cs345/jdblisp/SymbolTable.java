@@ -9,7 +9,7 @@ import java.util.Map;
  */
 public class SymbolTable {
 
-    private Map<Symbol, FunctionEntry> functions = new HashMap<Symbol, FunctionEntry>();
+    private Map<Symbol, FormEntry> functions = new HashMap<Symbol, FormEntry>();
     private Map<Symbol, VariableEntry> variables = new HashMap<Symbol, VariableEntry>();
     private SymbolTable enclosingTable;
     private boolean locked = false;
@@ -23,7 +23,7 @@ public class SymbolTable {
         this.locked = locked;
     }
 
-    public Symbol bind(Symbol s, FunctionEntry f) {
+    public Symbol bind(Symbol s, FormEntry f) {
         if (functions.get(s) != null) {
             // TODO: warning: function redefinition
             // Also, check access permissions
@@ -42,8 +42,8 @@ public class SymbolTable {
         return s;
     }
 
-    public FunctionEntry lookupFunction(Symbol s) throws LispException {
-        FunctionEntry fe = functions.get(s);
+    public FormEntry lookupFunction(Symbol s) throws LispException {
+        FormEntry fe = functions.get(s);
 
         // found function definition
         if (fe != null) return fe;

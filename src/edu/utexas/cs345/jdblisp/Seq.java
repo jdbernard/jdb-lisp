@@ -25,7 +25,7 @@ public class Seq implements SExp {
     }
 
     /** {@inheritdoc}*/
-    public SymbolTable eval(SymbolTable table) {
+    public SExp eval(SymbolTable table) {
         assert(false) : "Attempted to eval() a Seq.";
         throw new UnsupportedOperationException("Attempted to eval a Seq.");
     }
