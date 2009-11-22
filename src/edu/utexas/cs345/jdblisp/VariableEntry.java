@@ -6,11 +6,7 @@ package edu.utexas.cs345.jdblisp;
  */
 public class VariableEntry {
 
-    protected final SExp expression;
+    public final SExp value;
 
-    public VariableEntry(SExp expression) { this.expression = expression; }
-    
-    public SExp eval(SymbolTable symbolTable) throws LispException {
-        return expression.eval(symbolTable);
-    }
+    public VariableEntry(SExp value) { this.value = value; }
 }

@@ -15,4 +15,15 @@ public interface SExp {
 
     String display(String offset);
 
+    public static final SExp T = new SExp() {
+        public SExp eval(SymbolTable table) { return this; }
+        public String display(String offset) { return offset + "T\n"; }
+        public String toString() { return "T"; }
+    };
+
+    /*public static final SExp NIL = new SExp() {
+        SExp eval(SymbolTable table) { return this; }
+        String display(String offset) { return offset + "NIL\n"; }
+        String toString() { return "NIL"; }
+    };*/
 }

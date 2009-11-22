@@ -11,15 +11,17 @@ public interface ParserConstants {
   /** End of File. */
   int EOF = 0;
   /** RegularExpression Id. */
-  int LPAREN = 6;
+  int LPAREN = 7;
   /** RegularExpression Id. */
-  int RPAREN = 7;
+  int RPAREN = 8;
   /** RegularExpression Id. */
-  int NUMB = 8;
+  int NIL = 9;
   /** RegularExpression Id. */
-  int STRG = 9;
+  int NUMB = 10;
   /** RegularExpression Id. */
-  int SYMB = 10;
+  int STRG = 11;
+  /** RegularExpression Id. */
+  int SYMB = 12;
 
   /** Lexical state. */
   int DEFAULT = 0;
@@ -32,8 +34,10 @@ public interface ParserConstants {
     "\"\\t\"",
     "\"\\n\"",
     "\"\\n\\r\"",
+    "\";.*$\"",
     "\"(\"",
     "\")\"",
+    "<NIL>",
     "<NUMB>",
     "<STRG>",
     "<SYMB>",

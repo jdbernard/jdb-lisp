@@ -13,6 +13,10 @@ public class List implements SExp {
 
     /** {@inheritdoc}*/
     public SExp eval(SymbolTable table) throws LispException {
+
+        // null is NIL
+        if (seq == null) return null;
+
         // if the car of the sequence is a symbol, 
         if (seq.car instanceof Symbol) {
             // then that symbol is the name of an operator

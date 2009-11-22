@@ -21,11 +21,13 @@ SKIP : /* WHITE SPACE */
 |	"\t"
 |	"\n"
 |   "\n\r"
+|   ";.*$"
 }
 
 TOKEN : /* PUNCTUATION */
 {	< LPAREN: "(" >
 |	< RPAREN: ")" >
+|   < NIL:    (["N","n"]["I","i"]["L","l"])>
 
 }
 
@@ -55,7 +57,8 @@ SExp sexp():
 List list(): 
 {	Seq s;
 }
-{ <LPAREN>  s = seq() <RPAREN> { return new List(s); }    
+{     <LPAREN>  s = seq() <RPAREN> { return new List(s); }    
+    | <NIL>  { return new List(null); }  // allow NIL to be shorthand for ()
 }
 
 /**

@@ -1,5 +1,6 @@
 package edu.utexas.cs345.jdblisp;
 
+import java.io.PrintWriter;
 import java.util.ArrayList;
 
 /**
@@ -8,17 +9,103 @@ import java.util.ArrayList;
  */
 public abstract class SpecialFormEntry implements FormEntry {
 
-    protected Lisp environment;
+    public final HelpTopic helpinfo;
 
-    public SpecialFormEntry(Lisp environment) { this.environment = environment; }
+    protected LISPRuntime environment;
 
-    public abstract SExp call(SymbolTable symbolTable, Seq arguments) throws LispException;
+    public SpecialFormEntry(LISPRuntime environment, HelpTopic helpinfo) {
+        this.environment = environment;
+        this.helpinfo = helpinfo;
+    }
 
+    public HelpTopic helpinfo() { return helpinfo; }
 
-    public static void defineSpecialForms(Lisp environment) {
+    public abstract SExp call(SymbolTable symbolTable, Seq arguments)
+        throws LispException;
+
+    // ------------------------
+    // SPECIAL FORMS DEFINITION
+    // ------------------------
+
+    // JDB-Lisp includes on-line help for all of its special forms. See the
+    // help strings for documentation of the individual special forms.
     
-        SpecialFormEntry DEFUN = new SpecialFormEntry(environment) {
-            public SExp call(SymbolTable symbolTable, Seq arguments) throws LispException {
+    /**
+     * TODO
+     */
+    public static void defineSpecialForms(LISPRuntime environment) {
+
+        // ----
+        // HELP
+        // ----
+
+        SpecialFormEntry HELP = new SpecialFormEntry(
+            environment,
+            new FormHelpTopic("HELP",
+                "Display online help information for a topic.",
+                "(help <topic>)",
+                null,
+                "topic",
+                    "either a string representing the topic to lookup or a symbol"))
+        {
+            public SExp call(SymbolTable symbolTable, Seq arguments)
+            throws LispException {
+                
+                HelpTopic topic = null;
+
+                // no arguments: print help for HELP
+                if (arguments == null)
+                    return this.call(symbolTable,
+                        new Seq(new Symbol("HELP"), null));
+
+                // too many arguments
+                if (arguments.length() > 1)
+                    throw new InvalidArgumentQuantityException(1,
+                        arguments.length());
+
+                // try to find the topic or function help
+                if (arguments.car instanceof Str) {
+                    topic = HelpTopic.helpTopics.get(
+                        ((Str) arguments.car).value);
+                } else if (arguments.car instanceof Symbol) {
+                    try {
+                        FormEntry fe = symbolTable.lookupFunction(
+                            (Symbol) arguments.car);
+                        topic = fe.helpinfo();
+                    } catch (LispException le) { topic = null; }
+                }
+
+                // no topic found
+                if (topic == null)  {
+                    new PrintWriter(environment.getOutputStream(), true)
+                        .println(
+                            "No help information found for topic '"
+                            + arguments.car.toString() + "'.");
+                    return null;
+                }
+
+                topic.print(environment.getOutputStream());
+                return null;
+            }
+        };
+
+        // -----
+        // DEFUN
+        // -----
+
+        SpecialFormEntry DEFUN = new SpecialFormEntry(
+            environment,
+            new FormHelpTopic("DEFUN", "Define a (global) function.",
+                "(defun <name> (<param-list>) <func-body>)",
+                "Create a function binding. This will replace any existing binding.",
+                "name", "the symbol to bind to the function definition.",
+                "param-list", "a list of symbols that will be bound in the "
+                    + "function scope to the arguments passed to the function.",
+                "func-body", "an sexpression evaluated when the function is "
+                    + "called."))
+        {
+            public SExp call(SymbolTable symbolTable, Seq arguments)
+            throws LispException {
 
                 Symbol functionName;
                 ArrayList<Symbol> parameters = new ArrayList<Symbol>();
@@ -27,7 +114,7 @@ public abstract class SpecialFormEntry implements FormEntry {
                 // TODO: check to see if a function for this symbol exists
                 // and warn if so
 
-                if (arguments.length() != 3)
+                if (arguments == null || arguments.length() != 3)
                     new InvalidArgumentQuantityException(3, arguments.length());
 
                 // first argument: Symbol for function name
@@ -62,14 +149,31 @@ public abstract class SpecialFormEntry implements FormEntry {
                 body = arguments.car;
 
                 environment.globalSymbolTable.bind(functionName,
-                    new FunctionEntry(parameters.toArray(new Symbol[]{}), body));
+                    new FunctionEntry(functionName,
+                        parameters.toArray(new Symbol[]{}),
+                        body));
 
                 return functionName;
             }
         };
 
-        SpecialFormEntry SETQ = new SpecialFormEntry(environment) {
-            public SExp call(SymbolTable symbolTable, Seq arguments) throws LispException {
+        // ----
+        // SETQ
+        // ----
+
+
+        SpecialFormEntry SETQ = new SpecialFormEntry(
+            environment,
+            new FormHelpTopic("SETQ", "Define a global variable.",
+                "(setq <name> <value>)",
+                "Bind a value to a symbol in the global symbol table.",
+                "name", "the symbol to bind to the given value.",
+                "value", "an sexpression representing the value of the "
+                    + "variable. The value of the variable when it is "
+                    + "evaluated is the evaluated value of this sexpression."))
+        {
+            public SExp call(SymbolTable symbolTable, Seq arguments)
+            throws LispException {
                 
                 Symbol variableName;
                 SExp variableValue;
@@ -90,7 +194,7 @@ public abstract class SpecialFormEntry implements FormEntry {
                 arguments = arguments.cdr;
                 assert (arguments != null);
 
-                variableValue = arguments.car;
+                variableValue = arguments.car.eval(symbolTable);
 
                 environment.globalSymbolTable.bind(variableName,
                     new VariableEntry(variableValue));
@@ -99,7 +203,51 @@ public abstract class SpecialFormEntry implements FormEntry {
             }
         };
 
-        SpecialFormEntry SUM = new SpecialFormEntry(environment) {
+        // -----
+        // TRACE
+        // -----
+
+        SpecialFormEntry TRACE = new SpecialFormEntry(
+            environment,
+            new FormHelpTopic("TRACE",
+                "enable trace information for a function",
+                "(trace <funcname>)",
+                "Turn on trace information for a function.",
+                "funcname", "the name of the function to trace"))
+         {
+            public SExp call(SymbolTable symbolTable, Seq arguments)
+            throws LispException {
+
+                if (arguments == null || arguments.car == null)
+                    return null;
+
+                if (!(arguments.car instanceof Symbol))
+                    throw new LispException(arguments.car.toString()
+                        + " is not a valid function name.");
+
+                FormEntry fe = symbolTable.lookupFunction((Symbol) arguments.car);
+
+                if (fe instanceof FunctionEntry) ((FunctionEntry) fe).enableTrace(true);
+                // TODO: else throw error
+
+                return null;
+            }
+         };
+        // ---
+        // SUM
+        // ---
+
+        SpecialFormEntry SUM = new SpecialFormEntry(
+            environment,
+            new FormHelpTopic("+", "Sum several expressions.",
+                "(+ [<addend_1> ... <addend_n>])",
+                "Compute the summation of the zero or more expressions passed"
+                    + "as arguments. In general, expressions are evaluated "
+                    + "before being bound to function parameters. The"
+                    + " expressions passed to sum must evaluate to numbers.",
+                "addend_1 ... addend_n", "Addends may be any expression that "
+                    + "evaluates to a number."))
+        {
             public SExp call(SymbolTable symbolTable, Seq arguments)
             throws LispException {
 
@@ -119,7 +267,22 @@ public abstract class SpecialFormEntry implements FormEntry {
             }
         };
 
-        SpecialFormEntry DIF = new SpecialFormEntry(environment) {
+        SpecialFormEntry DIF = new SpecialFormEntry(
+            environment,
+            new FormHelpTopic("-", "Subtract several expressions.",
+                "(- subtrahend) | (- ??? <subtrahend_1> [... <subtrahend_n>])",
+                "Perform a subtraction. If there is only one argument passed "
+                    + "then result = 0 - arg. If multiple arguments are passed"
+                    + " then result = arg_1 - arg_2 - ... - args_n. In "
+                    + "general, expressions are evaluated before being bound "
+                    + " to function parameters. The expressions passed to - "
+                    + "must evaluate to numbers.",
+                "???", "In the case of multiple arguments to -, this is the "
+                    + "number from which the others are subtracted.",
+                "subtrahend_1 ... subtrahend_n", "Subtrahends are numbers "
+                    + "subtracted from the ??? and may be any expression that "
+                    + "evaluates to a number."))
+        {
             public SExp call(SymbolTable symbolTable, Seq arguments)
             throws LispException {
 
@@ -158,7 +321,17 @@ public abstract class SpecialFormEntry implements FormEntry {
             }
         };
 
-        SpecialFormEntry MUL = new SpecialFormEntry(environment) {
+        SpecialFormEntry MUL = new SpecialFormEntry(
+            environment,
+            new FormHelpTopic("*", "Multiply several expressions.",
+                "(+ [<multiplicand_1> ... <multiplicand_n>])",
+                "Compute the product of the zero or more expressions passed"
+                    + "as arguments. In general, expressions are evaluated "
+                    + "before being bound to function parameters. The"
+                    + " expressions passed to multiply must evaluate to numbers.",
+                "multiplicand_1 ... multiplicand_n", "Multiplicands may be "
+                    + "any expression that evaluates to a number."))
+        {
             public SExp call(SymbolTable symbolTable, Seq arguments)
             throws LispException {
 
@@ -179,7 +352,22 @@ public abstract class SpecialFormEntry implements FormEntry {
             }
         };
 
-        SpecialFormEntry DIV = new SpecialFormEntry(environment) {
+        SpecialFormEntry DIV = new SpecialFormEntry(
+            environment,
+            new FormHelpTopic("/", "Divide several expressions.",
+                "(- divisor) | (- quotient <divisor_1> [... <divisor_n>])",
+                "Perform division. If there is only one argument passed "
+                    + "then result = 1/ arg. If multiple arguments are passed"
+                    + " then result = arg_1 / arg_2 / ... / args_n, computed "
+                    + "from left to right. In general, expressions are "
+                    + "evaluated before being bound  to function parameters. "
+                    + "The expressions passed to / must evaluate to numbers.",
+                "quotient", "In the case of multiple arguments to /, this is "
+                    + "the number which is diveded.",
+                "divisor_1 ... divisor_n", "Divisors are the numbers dividing "
+                    + "the quotient and may be any expression that evaluates "
+                    + "to a number."))
+        {
             public SExp call(SymbolTable symbolTable, Seq arguments)
             throws LispException {
 
@@ -218,11 +406,47 @@ public abstract class SpecialFormEntry implements FormEntry {
             }
         };
 
+        SpecialFormEntry ENABLEDEBUGAST = new SpecialFormEntry(
+            environment,
+            new FormHelpTopic("ENABLE-DEBUG-AST",
+                "Enable debug information: abstract syntax tree.",
+                "(enable-debug-ast [<enable>])",
+                "When DEBUG-AST is enabled, the runtime environment prints a "
+                    + "representation of the abstract syntax tree generated "
+                    + "by the parser for each sexpression it parses.",
+                "enable", "NIL = disabled, anything else = enabled. No "
+                    + "argument = enabled."))
+        {
+            public SExp call(SymbolTable symbolTable, Seq arguments)
+            throws LispException {
+                if (arguments == null) {
+                    environment.dumpAST = true;
+                    return null;
+                }
+
+                SExp retVal = arguments.car.eval(symbolTable);
+
+                if (retVal != null) environment.dumpAST = true;
+                else environment.dumpAST = false;
+
+                return retVal;
+            }
+        };
+
+        /*SpecialFormEntry LET = new SpecialFormEntry(environment) {
+            public SExp call(SymbolTable table, Seq arguments) {
+                // TODO
+            }
+        }*/
+
+        environment.globalSymbolTable.bind(new Symbol("HELP"), HELP);
         environment.globalSymbolTable.bind(new Symbol("DEFUN"), DEFUN);
         environment.globalSymbolTable.bind(new Symbol("SETQ"), SETQ);
+            environment.globalSymbolTable.bind(new Symbol("TRACE"), TRACE);
         environment.globalSymbolTable.bind(new Symbol("+"), SUM);
         environment.globalSymbolTable.bind(new Symbol("-"), DIF);
         environment.globalSymbolTable.bind(new Symbol("*"), MUL);
         environment.globalSymbolTable.bind(new Symbol("/"), DIV);
+        environment.globalSymbolTable.bind(new Symbol("ENABLE-DEBUG-AST"), ENABLEDEBUGAST);
     }
 }

@@ -6,4 +6,5 @@ package edu.utexas.cs345.jdblisp;
  */
 public interface FormEntry {
     SExp call(SymbolTable table, Seq arguments) throws LispException;
+    HelpTopic helpinfo();
 }

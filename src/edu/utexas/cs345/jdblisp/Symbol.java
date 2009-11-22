@@ -13,7 +13,7 @@ public class Symbol implements SExp {
     /** {@inheritdoc}*/
     public SExp eval(SymbolTable table) throws LispException {
         VariableEntry ve = table.lookupVariable(this);
-        return ve.eval(table);
+        return ve.value;
     }
 
     public String display(String offset) {
