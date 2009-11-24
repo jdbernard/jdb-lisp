@@ -4,15 +4,18 @@ package edu.utexas.cs345.jdblisp.parser;
 import edu.utexas.cs345.jdblisp.*;
 public class Parser implements ParserConstants {
 
+    private static Symbol QUOTE_SYMB = new Symbol("QUOTE");
+
 /**
  * SExp -> Symbol | Str | Num | List | "'" SExp
  */
   static final public SExp sexp() throws ParseException {
         SExp s = null; Token t;
     switch ((jj_ntk==-1)?jj_ntk():jj_ntk) {
+    case KEYWORD:
     case SYMB:
-      t = jj_consume_token(SYMB);
-                   {if (true) return new Symbol(t.image.toUpperCase());}
+      s = symbol();
+                     {if (true) return s;}
       break;
     case STRG:
       t = jj_consume_token(STRG);
@@ -21,6 +24,11 @@ public class Parser implements ParserConstants {
     case NUMB:
       t = jj_consume_token(NUMB);
                    {if (true) return new Num(t.image);}
+      break;
+    case QUOTE:
+      t = jj_consume_token(QUOTE);
+      s = sexp();
+                               {if (true) return new List(new Seq(QUOTE_SYMB, s));}
       break;
     case LPAREN:
     case NIL:
@@ -67,18 +75,43 @@ public class Parser implements ParserConstants {
     switch ((jj_ntk==-1)?jj_ntk():jj_ntk) {
     case LPAREN:
     case NIL:
+    case QUOTE:
+    case KEYWORD:
     case NUMB:
     case STRG:
     case SYMB:
       se = sexp();
       sq = seq();
-                               {if (true) return new Seq(se, sq);}
+                              {if (true) return new Seq(se, sq);}
       break;
     default:
       jj_la1[2] = jj_gen;
       ;
     }
-          {if (true) return null;}
+      {if (true) return null;}
+    throw new Error("Missing return statement in function");
+  }
+
+/**
+ * Symbol -> Symbol | Keyword Symbol
+ */
+  static final public Symbol symbol() throws ParseException {
+  Token t;
+    switch ((jj_ntk==-1)?jj_ntk():jj_ntk) {
+    case SYMB:
+      t = jj_consume_token(SYMB);
+                 {if (true) return new Symbol(t.image.toUpperCase());}
+      break;
+    case KEYWORD:
+      jj_consume_token(KEYWORD);
+      t = jj_consume_token(SYMB);
+                            {if (true) return new Keyword(t.image.toUpperCase());}
+      break;
+    default:
+      jj_la1[3] = jj_gen;
+      jj_consume_token(-1);
+      throw new ParseException();
+    }
     throw new Error("Missing return statement in function");
   }
 
@@ -92,13 +125,13 @@ public class Parser implements ParserConstants {
   static public Token jj_nt;
   static private int jj_ntk;
   static private int jj_gen;
-  static final private int[] jj_la1 = new int[3];
+  static final private int[] jj_la1 = new int[4];
   static private int[] jj_la1_0;
   static {
       jj_la1_init_0();
    }
    private static void jj_la1_init_0() {
-      jj_la1_0 = new int[] {0x1e80,0x280,0x1e80,};
+      jj_la1_0 = new int[] {0x7e80,0x280,0x7e80,0x4800,};
    }
 
   /** Constructor with InputStream. */
@@ -119,7 +152,7 @@ public class Parser implements ParserConstants {
     token = new Token();
     jj_ntk = -1;
     jj_gen = 0;
-    for (int i = 0; i < 3; i++) jj_la1[i] = -1;
+    for (int i = 0; i < 4; i++) jj_la1[i] = -1;
   }
 
   /** Reinitialise. */
@@ -133,7 +166,7 @@ public class Parser implements ParserConstants {
     token = new Token();
     jj_ntk = -1;
     jj_gen = 0;
-    for (int i = 0; i < 3; i++) jj_la1[i] = -1;
+    for (int i = 0; i < 4; i++) jj_la1[i] = -1;
   }
 
   /** Constructor. */
@@ -150,7 +183,7 @@ public class Parser implements ParserConstants {
     token = new Token();
     jj_ntk = -1;
     jj_gen = 0;
-    for (int i = 0; i < 3; i++) jj_la1[i] = -1;
+    for (int i = 0; i < 4; i++) jj_la1[i] = -1;
   }
 
   /** Reinitialise. */
@@ -160,7 +193,7 @@ public class Parser implements ParserConstants {
     token = new Token();
     jj_ntk = -1;
     jj_gen = 0;
-    for (int i = 0; i < 3; i++) jj_la1[i] = -1;
+    for (int i = 0; i < 4; i++) jj_la1[i] = -1;
   }
 
   /** Constructor with generated Token Manager. */
@@ -176,7 +209,7 @@ public class Parser implements ParserConstants {
     token = new Token();
     jj_ntk = -1;
     jj_gen = 0;
-    for (int i = 0; i < 3; i++) jj_la1[i] = -1;
+    for (int i = 0; i < 4; i++) jj_la1[i] = -1;
   }
 
   /** Reinitialise. */
@@ -185,7 +218,7 @@ public class Parser implements ParserConstants {
     token = new Token();
     jj_ntk = -1;
     jj_gen = 0;
-    for (int i = 0; i < 3; i++) jj_la1[i] = -1;
+    for (int i = 0; i < 4; i++) jj_la1[i] = -1;
   }
 
   static private Token jj_consume_token(int kind) throws ParseException {
@@ -236,12 +269,12 @@ public class Parser implements ParserConstants {
   /** Generate ParseException. */
   static public ParseException generateParseException() {
     jj_expentries.clear();
-    boolean[] la1tokens = new boolean[13];
+    boolean[] la1tokens = new boolean[15];
     if (jj_kind >= 0) {
       la1tokens[jj_kind] = true;
       jj_kind = -1;
     }
-    for (int i = 0; i < 3; i++) {
+    for (int i = 0; i < 4; i++) {
       if (jj_la1[i] == jj_gen) {
         for (int j = 0; j < 32; j++) {
           if ((jj_la1_0[i] & (1<<j)) != 0) {
@@ -250,7 +283,7 @@ public class Parser implements ParserConstants {
         }
       }
     }
-    for (int i = 0; i < 13; i++) {
+    for (int i = 0; i < 15; i++) {
       if (la1tokens[i]) {
         jj_expentry = new int[1];
         jj_expentry[0] = i;

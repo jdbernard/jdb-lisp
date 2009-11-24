@@ -6,9 +6,7 @@ package edu.utexas.cs345.jdblisp;
 public class Symbol implements SExp {
     public final String name;
 
-    public Symbol(String name) {
-        this.name = name;
-    }
+    public Symbol(String name) { this.name = name; }
 
     /** {@inheritdoc}*/
     public SExp eval(SymbolTable table) throws LispException {

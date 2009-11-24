@@ -47,5 +47,8 @@
 
     </target>
 
-    <target name="dist" depends="init,compile"/>
+    <target name="dist" depends="init,compile">
+        <mkdir dir="${dist.dir}"/>
+
+    </target>
 </project>

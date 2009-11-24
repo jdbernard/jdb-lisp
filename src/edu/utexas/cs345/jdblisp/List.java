@@ -15,7 +15,7 @@ public class List implements SExp {
     public SExp eval(SymbolTable table) throws LispException {
 
         // null is NIL
-        if (seq == null) return null;
+        if (seq == null) return SExp.NIL;
 
         // if the car of the sequence is a symbol, 
         if (seq.car instanceof Symbol) {
@@ -35,7 +35,7 @@ public class List implements SExp {
 
         }
 
-        return null;
+        return SExp.NIL;
     }
 
     public String display(String offset) {
@@ -49,7 +49,7 @@ public class List implements SExp {
 
     @Override
     public String toString() {
-        return "(" + (seq == null ? "" : seq.toString()) + ")";
+        return seq == null ? "NIL" : "(" + seq.toString() + ")";
     }
 
 }

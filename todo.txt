@@ -1,3 +1,30 @@
-Implement FORMAT
-Implement READ and PRINT
-Implement IF
+Outstanding
+-----------
+
+    - Implement FORMAT
+    - Implement lambdas
+    - Implement LIST*
+    - Implement macros
+    - Implement packages
+    - Implement READ and PRINT
+    - Redefine DEFUN as a macro
+
+Partially Done
+--------------
+
+    P Implement keywords
+
+Done
+----
+
+    D Add ' notation for quote
+    D Define NIL
+    D Define T
+    D Implement DEFPARAMETER
+    D Implement DEFVAR
+    D Implement IF
+    D Implement LET
+    D Implement LET*
+    D Implement LIST
+    D Implement PROGN
+    D Implement QUOTE

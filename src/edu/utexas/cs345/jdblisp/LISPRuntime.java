@@ -35,9 +35,13 @@ public class LISPRuntime {
     public LISPRuntime(boolean interactive) {
         this.interactive = interactive;
         Parser parser = new Parser(new ByteArrayInputStream(new byte[]{}));
-        globalSymbolTable = new SymbolTable();
+
+        // build global constants
+        SymbolTable constantsSymbolTable = defineGlobalConstants();
+
+        // build global symbol table
+        globalSymbolTable = new SymbolTable(constantsSymbolTable);
         SpecialFormEntry.defineSpecialForms(this);
-        globalSymbolTable.bind(new Symbol("T"), new VariableEntry(SExp.T));
     }
 
     // TODO: is this needed? 
@@ -113,5 +117,13 @@ public class LISPRuntime {
     }
 
     OutputStream getOutputStream() { return os; }
+
+    private static SymbolTable defineGlobalConstants() {
+        SymbolTable constantsTable = new SymbolTable();
+        constantsTable.bind(new Symbol("T"), new VariableEntry(SExp.T, true));
+        constantsTable.bind(new Symbol("NIL"), new VariableEntry(SExp.NIL, true));
+
+        return constantsTable;
+    }
 
 }

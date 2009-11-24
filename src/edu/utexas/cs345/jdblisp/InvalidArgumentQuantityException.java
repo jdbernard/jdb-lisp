@@ -11,4 +11,12 @@ public class InvalidArgumentQuantityException extends LispException {
         super ("Invalid number of arguments: " + actual
             + " (expected " + expected + ").");
     }
+
+    public InvalidArgumentQuantityException(int actual) {
+        super ("Invalid number of arguments: " + actual);
+    }
+
+    public InvalidArgumentQuantityException(String message) {
+        super ("Invalid number of arguments: " + message);
+    }
 }

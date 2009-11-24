@@ -42,6 +42,38 @@ public class SymbolTable {
         return s;
     }
 
+    public Symbol rebind(Symbol s, VariableEntry v) throws LispException {
+
+        // look up the variable in the current table
+        VariableEntry curVal = variables.get(s);
+
+        // not present
+        if (curVal == null) {
+            
+            // no parent table, variable is undefine
+            if (enclosingTable == null) 
+                throw new LispException("No such variable defined: " + s.name);
+
+            // check parent table
+            return enclosingTable.rebind(s, v);
+
+        }
+        
+        // it is present
+        else {
+
+            // if this variable is constant, err
+            if (curVal.isConstant)
+                throw new LispException("Cannot set variable " + s.name
+                    + ": the variable is constant.");
+
+            // if not, set the new value
+            variables.put(s, v);
+        }
+
+        return s;
+    }
+
     public FormEntry lookupFunction(Symbol s) throws LispException {
         FormEntry fe = functions.get(s);
 

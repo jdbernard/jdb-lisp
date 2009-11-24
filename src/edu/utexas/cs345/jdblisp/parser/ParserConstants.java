@@ -17,11 +17,15 @@ public interface ParserConstants {
   /** RegularExpression Id. */
   int NIL = 9;
   /** RegularExpression Id. */
-  int NUMB = 10;
+  int QUOTE = 10;
   /** RegularExpression Id. */
-  int STRG = 11;
+  int KEYWORD = 11;
   /** RegularExpression Id. */
-  int SYMB = 12;
+  int NUMB = 12;
+  /** RegularExpression Id. */
+  int STRG = 13;
+  /** RegularExpression Id. */
+  int SYMB = 14;
 
   /** Lexical state. */
   int DEFAULT = 0;
@@ -38,6 +42,8 @@ public interface ParserConstants {
     "\"(\"",
     "\")\"",
     "<NIL>",
+    "\"\\\'\"",
+    "\":\"",
     "<NUMB>",
     "<STRG>",
     "<SYMB>",

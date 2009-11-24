@@ -21,9 +21,9 @@ public interface SExp {
         public String toString() { return "T"; }
     };
 
-    /*public static final SExp NIL = new SExp() {
-        SExp eval(SymbolTable table) { return this; }
-        String display(String offset) { return offset + "NIL\n"; }
-        String toString() { return "NIL"; }
-    };*/
+    public static final SExp NIL = new SExp() {
+        public SExp eval(SymbolTable table) { return this; }
+        public String display(String offset) { return offset + "NIL\n"; }
+        public String toString() { return "NIL"; }
+    };
 }

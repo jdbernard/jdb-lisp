@@ -35,57 +35,190 @@ public abstract class SpecialFormEntry implements FormEntry {
      */
     public static void defineSpecialForms(LISPRuntime environment) {
 
-        // ----
-        // HELP
-        // ----
+        // ---
+        // DIV
+        // ---
 
-        SpecialFormEntry HELP = new SpecialFormEntry(
+        final SpecialFormEntry DIV = new SpecialFormEntry(
             environment,
-            new FormHelpTopic("HELP",
-                "Display online help information for a topic.",
-                "(help <topic>)",
-                null,
-                "topic",
-                    "either a string representing the topic to lookup or a symbol"))
+            new FormHelpTopic("/", "Divide several expressions.",
+                "(- divisor) | (- dividend <divisor_1> [... <divisor_n>])",
+                "Perform division. If there is only one argument passed "
+                    + "then result = 1/ arg. If multiple arguments are passed"
+                    + " then result = arg_1 / arg_2 / ... / args_n, computed "
+                    + "from left to right. In general, expressions are "
+                    + "evaluated before being bound  to function parameters. "
+                    + "The expressions passed to / must evaluate to numbers.",
+                "dividend", "In the case of multiple arguments to /, this is "
+                    + "the number which is diveded.",
+                "divisor_1 ... divisor_n", "Divisors are the numbers dividing "
+                    + "the dividend and may be any expression that evaluates "
+                    + "to a number."))
         {
             public SExp call(SymbolTable symbolTable, Seq arguments)
             throws LispException {
-                
-                HelpTopic topic = null;
 
-                // no arguments: print help for HELP
+                Num dividend = new Num("1");
+                Num firstArg;
+
                 if (arguments == null)
-                    return this.call(symbolTable,
-                        new Seq(new Symbol("HELP"), null));
+                    throw new InvalidArgumentQuantityException(
+                        "invalid number of arguments: 0");
 
-                // too many arguments
-                if (arguments.length() > 1)
-                    throw new InvalidArgumentQuantityException(1,
-                        arguments.length());
+                // case: only one argument: 1 / arg
+                try { firstArg = (Num) arguments.car.eval(symbolTable); }
+                catch (ClassCastException cce) {
+                    throw new TypeException(arguments.car, Num.class);
+                }
 
-                // try to find the topic or function help
-                if (arguments.car instanceof Str) {
-                    topic = HelpTopic.helpTopics.get(
-                        ((Str) arguments.car).value);
-                } else if (arguments.car instanceof Symbol) {
+                dividend = dividend.divideBy(firstArg);
+
+                arguments = arguments.cdr;
+                if (arguments == null) return dividend;
+
+                // case: (/ x y1 ... yn)
+                dividend = firstArg;
+
+                // variable number of arguments [0..inf)
+                while (arguments != null) {
                     try {
-                        FormEntry fe = symbolTable.lookupFunction(
-                            (Symbol) arguments.car);
-                        topic = fe.helpinfo();
-                    } catch (LispException le) { topic = null; }
+                        dividend = dividend.divideBy(
+                            (Num) arguments.car.eval(symbolTable));
+                    } catch (ClassCastException cce) {
+                        throw new TypeException(arguments.car, Num.class);
+                    }
+                    arguments = arguments.cdr;
                 }
 
-                // no topic found
-                if (topic == null)  {
-                    new PrintWriter(environment.getOutputStream(), true)
-                        .println(
-                            "No help information found for topic '"
-                            + arguments.car.toString() + "'.");
-                    return null;
+                return dividend;
+            }
+        };
+
+        // ---
+        // DIF
+        // ---
+
+        final SpecialFormEntry DIF = new SpecialFormEntry(
+            environment,
+            new FormHelpTopic("-", "Subtract several expressions.",
+                "(- subtrahend) | (- <minuend> <subtrahend_1> [... <subtrahend_n>])",
+                "Perform a subtraction. If there is only one argument passed "
+                    + "then result = 0 - arg. If multiple arguments are passed"
+                    + " then result = arg_1 - arg_2 - ... - args_n. In "
+                    + "general, expressions are evaluated before being bound "
+                    + " to function parameters. The expressions passed to - "
+                    + "must evaluate to numbers.",
+                "minuend", "In the case of multiple arguments to -, this is "
+                    + "the number from which the others are subtracted.",
+                "subtrahend_1 ... subtrahend_n", "Subtrahends are numbers "
+                    + "subtracted from the minuend and may be any expression "
+                    + "that evaluates to a number."))
+        {
+            public SExp call(SymbolTable symbolTable, Seq arguments)
+            throws LispException {
+
+                Num difference = new Num("0");
+
+                // need at least one argument
+                if (arguments == null)
+                    throw new InvalidArgumentQuantityException(
+                        "invalid number of arguments: 0");
+
+                // case: only one argument: 0 - arg
+                try {
+                    difference = difference.subtract(
+                        (Num) arguments.car.eval(symbolTable));
+                } catch (ClassCastException cce) {
+                    throw new TypeException(arguments.car, Num.class);
                 }
 
-                topic.print(environment.getOutputStream());
-                return null;
+                arguments = arguments.cdr;
+                if (arguments == null) return difference;
+
+                // case: (- x y1 ... yn)
+                difference = difference.negate();
+
+                // variable number of arguments [0..inf)
+                while (arguments != null)  {
+                    try {
+                        difference = difference.subtract(
+                            (Num) arguments.car.eval(symbolTable));
+                    } catch (ClassCastException cce) {
+                        throw new TypeException(arguments.car, Num.class);
+                    }
+                    arguments = arguments.cdr;
+                }
+
+                return difference;
+            }
+        };
+
+        // ---
+        // MUL
+        // ---
+
+        final SpecialFormEntry MUL = new SpecialFormEntry(
+            environment,
+            new FormHelpTopic("*", "Multiply several expressions.",
+                "(+ [<multiplicand_1> ... <multiplicand_n>])",
+                "Compute the product of the zero or more expressions passed"
+                    + "as arguments. In general, expressions are evaluated "
+                    + "before being bound to function parameters. The"
+                    + " expressions passed to multiply must evaluate to numbers.",
+                "multiplicand_1 ... multiplicand_n", "Multiplicands may be "
+                    + "any expression that evaluates to a number."))
+        {
+            public SExp call(SymbolTable symbolTable, Seq arguments)
+            throws LispException {
+
+                Num product = new Num("1");
+
+                // variable number of arguments [0..inf)
+                while (arguments != null) {
+                    try {
+                        product = product.multiply(
+                            (Num) arguments.car.eval(symbolTable));
+                    } catch (ClassCastException cce) {
+                        throw new TypeException(arguments.car, Num.class);
+                    }
+                    arguments = arguments.cdr;
+                }
+
+                return product;
+            }
+        };
+
+        // ---
+        // SUM
+        // ---
+
+        final SpecialFormEntry SUM = new SpecialFormEntry(
+            environment,
+            new FormHelpTopic("+", "Sum several expressions.",
+                "(+ [<addend_1> ... <addend_n>])",
+                "Compute the summation of the zero or more expressions passed"
+                    + "as arguments. In general, expressions are evaluated "
+                    + "before being bound to function parameters. The"
+                    + " expressions passed to sum must evaluate to numbers.",
+                "addend_1 ... addend_n", "Addends may be any expression that "
+                    + "evaluates to a number."))
+        {
+            public SExp call(SymbolTable symbolTable, Seq arguments)
+            throws LispException {
+
+                Num sum = new Num("0");
+
+                // variable number of arguments [0..inf)
+                while (arguments != null) {
+                    try {
+                        sum = sum.add((Num) arguments.car.eval(symbolTable));
+                    } catch (ClassCastException cce) {
+                        throw new TypeException(arguments.car, Num.class);
+                    }
+                    arguments = arguments.cdr;
+                }
+
+                return sum;
             }
         };
 
@@ -93,7 +226,7 @@ public abstract class SpecialFormEntry implements FormEntry {
         // DEFUN
         // -----
 
-        SpecialFormEntry DEFUN = new SpecialFormEntry(
+        final SpecialFormEntry DEFUN = new SpecialFormEntry(
             environment,
             new FormHelpTopic("DEFUN", "Define a (global) function.",
                 "(defun <name> (<param-list>) <func-body>)",
@@ -157,256 +290,111 @@ public abstract class SpecialFormEntry implements FormEntry {
             }
         };
 
-        // ----
-        // SETQ
-        // ----
+        // ------------
+        // DEFPARAMETER
+        // ------------
 
-
-        SpecialFormEntry SETQ = new SpecialFormEntry(
+        final SpecialFormEntry DEFPARAMETER = new SpecialFormEntry(
             environment,
-            new FormHelpTopic("SETQ", "Define a global variable.",
-                "(setq <name> <value>)",
-                "Bind a value to a symbol in the global symbol table.",
-                "name", "the symbol to bind to the given value.",
-                "value", "an sexpression representing the value of the "
-                    + "variable. The value of the variable when it is "
-                    + "evaluated is the evaluated value of this sexpression."))
+            new FormHelpTopic("DEFPARAMETER", "define a dynamic variable",
+                "(defparameter <name> <initial-value> [<documentation>]) => <name>",
+                "defparameter establishes name as a dynamic variable. "
+                    + "defparameter unconditionally assigns the initial-value "
+                    + "to the dynamic variable named name (as opposed to "
+                    + "defvar, which assigns initial-value (if supplied) to "
+                    + "the dynamic variable named name only if name is not "
+                    + "already bound.)",
+                "name", "a symbol; not evaluated. ",
+                "initial-value", "a form, always evaluated",
+                "documentation", "a string; not evaluated."))
+        {
+            public SExp call(SymbolTable symbolTable, Seq arguments)
+            throws LispException {
+
+                Symbol name;
+                SExp initValue = null;
+                HelpTopic helpinfo = null;
+
+                if (arguments == null)
+                    throw new InvalidArgumentQuantityException(0);
+
+                // first argument: variable name
+                if (!(arguments.car instanceof Symbol))
+                    throw new TypeException(arguments.car, Symbol.class);
+
+                name = (Symbol) arguments.car;
+
+                // second argument: initial value
+                arguments = arguments.cdr;
+                if (arguments != null) 
+                    initValue = arguments.car.eval(symbolTable);
+                
+                // thrid argument: documentation
+                arguments = arguments.cdr;
+                if (arguments != null) {
+                    if (!(arguments.car instanceof Str))
+                        throw new TypeException(arguments.car, Str.class);
+
+                    helpinfo = new HelpTopic(name.name, "variable", 
+                        ((Str) arguments.car).value);
+                }
+
+                symbolTable.bind(name,
+                    new VariableEntry(initValue, false, helpinfo));
+
+                return name;
+
+            }
+        };
+
+        // ------
+        // DEFVAR
+        // ------
+
+        final SpecialFormEntry DEFVAR = new SpecialFormEntry(
+            environment,
+            new FormHelpTopic("DEFVAR", "define a variable",
+                "(defvar <name> [<initial-value> [<documentation>]]) => <name>",
+                "defvar establishes name as a dynamic variable and assigns "
+                    + "initial-value (if supplied) to the dynamic variable "
+                    + "named name only if name is not already bound (this is"
+                    + " in contrast to defparameter, which does not case if "
+                    + "the name has already been bound. ",
+                "name", "a symbol; not evaluated. ",
+                "initial-value", "a form, evaluated only if name is not "
+                    + "already bound.",
+                "documentation", "a string; not evaluated."))
         {
             public SExp call(SymbolTable symbolTable, Seq arguments)
             throws LispException {
                 
-                Symbol variableName;
-                SExp variableValue;
+                Symbol name;
+                SExp initValue = null;
+                HelpTopic helpinfo = null;
 
-                // TODO: check for redifinition of variable (and warn)
+                if (arguments == null)
+                    throw new InvalidArgumentQuantityException(0);
 
-                if (arguments.length() != 2)
-                    throw new InvalidArgumentQuantityException(2,
-                        arguments.length());
-
-                // first argument: Symbol for variable name
-                //if (!(arguments.car instanceof Symbol))
-                    // TODO: error: expected symbol
-
-                variableName = (Symbol) arguments.car;
-
-                // second argument: variable value
-                arguments = arguments.cdr;
-                assert (arguments != null);
-
-                variableValue = arguments.car.eval(symbolTable);
-
-                environment.globalSymbolTable.bind(variableName,
-                    new VariableEntry(variableValue));
-
-                return variableValue;
-            }
-        };
-
-        // -----
-        // TRACE
-        // -----
-
-        SpecialFormEntry TRACE = new SpecialFormEntry(
-            environment,
-            new FormHelpTopic("TRACE",
-                "enable trace information for a function",
-                "(trace <funcname>)",
-                "Turn on trace information for a function.",
-                "funcname", "the name of the function to trace"))
-         {
-            public SExp call(SymbolTable symbolTable, Seq arguments)
-            throws LispException {
-
-                if (arguments == null || arguments.car == null)
-                    return null;
-
+                // first argument: variable name
                 if (!(arguments.car instanceof Symbol))
-                    throw new LispException(arguments.car.toString()
-                        + " is not a valid function name.");
+                    throw new TypeException(arguments.car, Symbol.class);
 
-                FormEntry fe = symbolTable.lookupFunction((Symbol) arguments.car);
+                name = (Symbol) arguments.car;
 
-                if (fe instanceof FunctionEntry) ((FunctionEntry) fe).enableTrace(true);
-                // TODO: else throw error
+                // if this variable is already defined, return without
+                // setting it
+                if (symbolTable.lookupVariable(name) != null)
+                    return arguments.car;
 
-                return null;
-            }
-         };
-        // ---
-        // SUM
-        // ---
-
-        SpecialFormEntry SUM = new SpecialFormEntry(
-            environment,
-            new FormHelpTopic("+", "Sum several expressions.",
-                "(+ [<addend_1> ... <addend_n>])",
-                "Compute the summation of the zero or more expressions passed"
-                    + "as arguments. In general, expressions are evaluated "
-                    + "before being bound to function parameters. The"
-                    + " expressions passed to sum must evaluate to numbers.",
-                "addend_1 ... addend_n", "Addends may be any expression that "
-                    + "evaluates to a number."))
-        {
-            public SExp call(SymbolTable symbolTable, Seq arguments)
-            throws LispException {
-
-                Num sum = new Num("0");
-
-                // variable number of arguments [0..inf)
-                while (arguments != null) {
-                    try {
-                        sum = sum.add((Num) arguments.car.eval(symbolTable));
-                    } catch (ClassCastException cce) {
-                        throw new TypeException(arguments.car, Num.class);
-                    }
-                    arguments = arguments.cdr;
-                }
-
-                return sum;
+                return DEFPARAMETER.call(symbolTable, arguments);
             }
         };
 
-        SpecialFormEntry DIF = new SpecialFormEntry(
-            environment,
-            new FormHelpTopic("-", "Subtract several expressions.",
-                "(- subtrahend) | (- ??? <subtrahend_1> [... <subtrahend_n>])",
-                "Perform a subtraction. If there is only one argument passed "
-                    + "then result = 0 - arg. If multiple arguments are passed"
-                    + " then result = arg_1 - arg_2 - ... - args_n. In "
-                    + "general, expressions are evaluated before being bound "
-                    + " to function parameters. The expressions passed to - "
-                    + "must evaluate to numbers.",
-                "???", "In the case of multiple arguments to -, this is the "
-                    + "number from which the others are subtracted.",
-                "subtrahend_1 ... subtrahend_n", "Subtrahends are numbers "
-                    + "subtracted from the ??? and may be any expression that "
-                    + "evaluates to a number."))
-        {
-            public SExp call(SymbolTable symbolTable, Seq arguments)
-            throws LispException {
+        // ----------------
+        // ENABLE-DEBUG-AST
+        // ----------------
 
-                Num difference = new Num("0");
-
-                // need at least one argument
-                if (arguments == null)
-                    throw new InvalidArgumentQuantityException(1, 0);
-
-                // case: only one argument: 0 - arg
-                try {
-                    difference = difference.subtract(
-                        (Num) arguments.car.eval(symbolTable));
-                } catch (ClassCastException cce) {
-                    throw new TypeException(arguments.car, Num.class);
-                }
-
-                arguments = arguments.cdr;
-                if (arguments == null) return difference;
-
-                // case: (- x y1 ... yn)
-                difference = difference.negate();
-
-                // variable number of arguments [0..inf)
-                while (arguments != null)  {
-                    try {
-                        difference = difference.subtract(
-                            (Num) arguments.car.eval(symbolTable));
-                    } catch (ClassCastException cce) {
-                        throw new TypeException(arguments.car, Num.class);
-                    }
-                    arguments = arguments.cdr;
-                }
-
-                return difference;
-            }
-        };
-
-        SpecialFormEntry MUL = new SpecialFormEntry(
-            environment,
-            new FormHelpTopic("*", "Multiply several expressions.",
-                "(+ [<multiplicand_1> ... <multiplicand_n>])",
-                "Compute the product of the zero or more expressions passed"
-                    + "as arguments. In general, expressions are evaluated "
-                    + "before being bound to function parameters. The"
-                    + " expressions passed to multiply must evaluate to numbers.",
-                "multiplicand_1 ... multiplicand_n", "Multiplicands may be "
-                    + "any expression that evaluates to a number."))
-        {
-            public SExp call(SymbolTable symbolTable, Seq arguments)
-            throws LispException {
-
-                Num product = new Num("1");
-
-                // variable number of arguments [0..inf)
-                while (arguments != null) {
-                    try {
-                        product = product.multiply(
-                            (Num) arguments.car.eval(symbolTable));
-                    } catch (ClassCastException cce) {
-                        throw new TypeException(arguments.car, Num.class);
-                    }
-                    arguments = arguments.cdr;
-                }
-
-                return product;
-            }
-        };
-
-        SpecialFormEntry DIV = new SpecialFormEntry(
-            environment,
-            new FormHelpTopic("/", "Divide several expressions.",
-                "(- divisor) | (- quotient <divisor_1> [... <divisor_n>])",
-                "Perform division. If there is only one argument passed "
-                    + "then result = 1/ arg. If multiple arguments are passed"
-                    + " then result = arg_1 / arg_2 / ... / args_n, computed "
-                    + "from left to right. In general, expressions are "
-                    + "evaluated before being bound  to function parameters. "
-                    + "The expressions passed to / must evaluate to numbers.",
-                "quotient", "In the case of multiple arguments to /, this is "
-                    + "the number which is diveded.",
-                "divisor_1 ... divisor_n", "Divisors are the numbers dividing "
-                    + "the quotient and may be any expression that evaluates "
-                    + "to a number."))
-        {
-            public SExp call(SymbolTable symbolTable, Seq arguments)
-            throws LispException {
-
-                Num dividend = new Num("1");
-                Num firstArg;
-
-                if (arguments == null)
-                    throw new InvalidArgumentQuantityException(1, 0);
-
-                // case: only one argument: 1 / arg
-                try { firstArg = (Num) arguments.car.eval(symbolTable); }
-                catch (ClassCastException cce) {
-                    throw new TypeException(arguments.car, Num.class);
-                }
-
-                dividend = dividend.divideBy(firstArg);
-
-                arguments = arguments.cdr;
-                if (arguments == null) return dividend;
-
-                // case: (/ x y1 ... yn)
-                dividend = firstArg;
-
-                // variable number of arguments [0..inf)
-                while (arguments != null) {
-                    try {
-                        dividend = dividend.divideBy(
-                            (Num) arguments.car.eval(symbolTable));
-                    } catch (ClassCastException cce) {
-                        throw new TypeException(arguments.car, Num.class);
-                    }
-                    arguments = arguments.cdr;
-                }
-
-                return dividend;
-            }
-        };
-
-        SpecialFormEntry ENABLEDEBUGAST = new SpecialFormEntry(
+        final SpecialFormEntry ENABLEDEBUGAST = new SpecialFormEntry(
             environment,
             new FormHelpTopic("ENABLE-DEBUG-AST",
                 "Enable debug information: abstract syntax tree.",
@@ -421,7 +409,7 @@ public abstract class SpecialFormEntry implements FormEntry {
             throws LispException {
                 if (arguments == null) {
                     environment.dumpAST = true;
-                    return null;
+                    return SExp.NIL;
                 }
 
                 SExp retVal = arguments.car.eval(symbolTable);
@@ -433,20 +421,473 @@ public abstract class SpecialFormEntry implements FormEntry {
             }
         };
 
-        /*SpecialFormEntry LET = new SpecialFormEntry(environment) {
-            public SExp call(SymbolTable table, Seq arguments) {
-                // TODO
-            }
-        }*/
+        // ----
+        // HELP
+        // ----
 
-        environment.globalSymbolTable.bind(new Symbol("HELP"), HELP);
-        environment.globalSymbolTable.bind(new Symbol("DEFUN"), DEFUN);
-        environment.globalSymbolTable.bind(new Symbol("SETQ"), SETQ);
-            environment.globalSymbolTable.bind(new Symbol("TRACE"), TRACE);
-        environment.globalSymbolTable.bind(new Symbol("+"), SUM);
+        final SpecialFormEntry HELP = new SpecialFormEntry(
+            environment,
+            new FormHelpTopic("HELP",
+                "Display online help information for a topic.",
+                "(help <topic>)",
+                null,
+                "topic",
+                    "either a string representing the topic to lookup or a symbol"))
+        {
+            public SExp call(SymbolTable symbolTable, Seq arguments)
+            throws LispException {
+                
+                HelpTopic topic = null;
+
+                // no arguments: print help for HELP
+                if (arguments == null)
+                    return this.call(symbolTable,
+                        new Seq(new Symbol("HELP"), null));
+
+                // too many arguments
+                if (arguments.length() > 1)
+                    throw new InvalidArgumentQuantityException(1,
+                        arguments.length());
+
+                // try to find the topic or function help
+                if (arguments.car instanceof Str) {
+                    topic = HelpTopic.helpTopics.get(
+                        ((Str) arguments.car).value);
+                } else if (arguments.car instanceof Symbol) {
+                    try {
+                        FormEntry fe = symbolTable.lookupFunction(
+                            (Symbol) arguments.car);
+                        topic = fe.helpinfo();
+                    } catch (LispException le) { topic = null; }
+                }
+
+                // no topic found
+                if (topic == null)  {
+                    new PrintWriter(environment.getOutputStream(), true)
+                        .println(
+                            "No help information found for topic '"
+                            + arguments.car.toString() + "'.");
+                    return SExp.NIL;
+                }
+
+                topic.print(environment.getOutputStream());
+                return SExp.NIL;
+            }
+        };
+
+        // --
+        // IF
+        // --
+
+        final SpecialFormEntry IF = new SpecialFormEntry(
+            environment,
+            new FormHelpTopic("IF",
+                "conditional code execution",
+                "(if <test-form> <then-form> [<else-form>]) => result*",
+                "if allows the execution of a form to be dependent on a "
+                    + "single test-form. First test-form is evaluated. If "
+                    + "the result is true, then then-form is selected; "
+                    + "otherwise else-form is selected. Whichever form is "
+                    + "selected is then evaluated.",
+                "test-form", "a form.",
+                "then-form", "a form.",
+                "else-form", "a form. The default is nil. ",
+                "results", "if the test-form yielded true, the values "
+                    + "returned by the then-form; otherwise, the values "
+                    + "returned by the else-form."))
+        {
+            public SExp call(SymbolTable symbolTable, Seq arguments) 
+            throws LispException {
+                if (arguments == null || arguments.length() < 2)
+                    throw new InvalidArgumentQuantityException(
+                        2, arguments == null ? 0 : arguments.length());
+
+                // evaluate test form
+                SExp testResult = arguments.car.eval(symbolTable);
+
+                // advance to then-form
+                arguments = arguments.cdr;
+
+                // if false, advance to else-form
+                if (testResult == null) arguments = arguments.cdr;
+
+                if (arguments == null) return arguments;
+                return arguments.eval(symbolTable);
+            }
+        };
+
+        // ---
+        // LET
+        // ---
+
+        final SpecialFormEntry LET = new SpecialFormEntry(
+            environment,
+            new FormHelpTopic("LET", "create new lexical variable bindings",
+                "(let (([<var> <init-form>])*) <form>*) => <result>",
+                "let creates new variable bindings and executes a series of "
+                    + "forms that use these bindings. let performs the "
+                    + "bindings in parallel (as opposed to let* which does "
+                    + "them sequentially). The form (let ((var1 init-form-1) "
+                    + "(var2 init-form-2) ...  (varm init-form-m)) form1 form2 "
+                    + "... formn) first evaluates the expressions init-form-1, "
+                    + "init-form-2, and so on, in that order, saving the "
+                    + "resulting values. Then all of the variables varj are "
+                    + "bound to the corresponding values; each binding is "
+                    + "lexical. The expressions formk are then evaluated in "
+                    + "order; the values of all but the last are discarded "
+                    + "(that is, the body of a let is an implicit progn).",
+                "var", "a symbol",
+                "init-form", "a form",
+                "form", "a form",
+                "result", "the value returned by the last form"))
+        {
+            public SExp call(SymbolTable symbolTable, Seq arguments)
+            throws LispException {
+                
+                SymbolTable newScope;
+                Seq letBinding;
+                ArrayList<Symbol> symbols = new ArrayList<Symbol>();
+                ArrayList<SExp> values = new ArrayList<SExp>();
+                SExp retVal = SExp.NIL;
+
+                if (arguments == null)
+                    throw new InvalidArgumentQuantityException(0);
+
+                if (!(arguments.car instanceof List))
+                    throw new LispException("Malformed LET bindings: "
+                        + arguments.car.toString());
+
+                letBinding = ((List) arguments.car).seq;
+
+                while (letBinding != null) {
+
+                    // each binding should be a list of a symbol and form
+                    if (!(letBinding.car instanceof List))
+                        throw new LispException("Malformed LET bindings: "
+                            + letBinding.car.toString());
+
+                    // get the symbol
+                    Seq binding = ((List) letBinding.car).seq;
+                    if (binding == null) 
+                        throw new LispException(""); // TODO
+
+                    if (!(binding.car instanceof Symbol))
+                        throw new TypeException(binding.car, Symbol.class);
+
+                    symbols.add((Symbol) binding.car);
+
+                    // get and evaluate the value
+                    binding = binding.cdr;
+                    if (binding == null) values.add(SExp.NIL);
+                    else values.add(binding.car.eval(symbolTable));
+
+                    // next let binding
+                    letBinding = letBinding.cdr;
+                }
+
+                // perform actual binding in a new scope
+                newScope = new SymbolTable(symbolTable);
+
+                for (int i = 0; i < symbols.size(); ++i)
+                    newScope.bind(symbols.get(i),
+                        new VariableEntry(values.get(i)));
+
+                // evaluate all forms with the new scope
+                arguments = arguments.cdr;
+
+                while (arguments != null) {
+                    retVal = arguments.car.eval(newScope);
+                    arguments = arguments.cdr;
+                }
+
+                return retVal;
+            }
+        };
+
+        // ----
+        // LET*
+        // ----
+
+        final SpecialFormEntry LET_STAR = new SpecialFormEntry(
+            environment,
+            new FormHelpTopic("LET*", "create new lexical variable bindings",
+                "(let (([<var> <init-form>])*) <form>*) => <result>",
+                "let* creates new variable bindings and executes a series of "
+                    + "forms that use these bindings. let* performs the "
+                    + "bindings sequentially (as opposed to let which does "
+                    + "them in parallel). The expression for the init-form of "
+                    + "a var can refer to vars previously bound in the let*."
+                    + "The form (let* ((var1 init-form-1) (var2 init-form-2)"
+                    + " ... (varm init-form-m)) form1 form2 ... formn) first "
+                    + "evaluates the expression init-form-1, then binds the "
+                    + "variable var1 to that value; then it evaluates "
+                    + "init-form-2 and binds var2, and so on. The expressions "
+                    + "formj are then evaluated in order; the values of all "
+                    + "but the last are discarded (that is, the body of let* "
+                    + "is an implicit progn).",
+                "var", "a symbol",
+                "init-form", "a form",
+                "form", "a form",
+                "result", "the value returned by the last form"))
+        {
+            public SExp call(SymbolTable symbolTable, Seq arguments)
+            throws LispException {
+
+                SymbolTable newScope;
+                Seq letBinding;
+                Symbol var;
+                SExp initvalue;
+                SExp retVal = SExp.NIL;
+
+                if (arguments == null)
+                    throw new InvalidArgumentQuantityException(0);
+
+                if (!(arguments.car instanceof List))
+                    throw new LispException("Malformed LET bindings: "
+                        + arguments.car.toString());
+
+                letBinding = ((List) arguments.car).seq;
+
+                // perform actual binding in a new scope
+                newScope = new SymbolTable(symbolTable);
+
+                while (letBinding != null) {
+
+                    // each binding should be a list of a symbol and form
+                    if (!(letBinding.car instanceof List))
+                        throw new LispException("Malformed LET bindings: "
+                            + letBinding.car.toString());
+
+                    // get the symbol
+                    Seq binding = ((List) letBinding.car).seq;
+                    if (binding == null) 
+                        throw new LispException(""); // TODO
+
+                    if (!(binding.car instanceof Symbol))
+                        throw new TypeException(binding.car, Symbol.class);
+
+                    var = (Symbol) binding.car;
+
+                    // get and evaluate the value
+                    // include already bound variables from the let* in the
+                    // scope for this evaluation
+                    binding = binding.cdr;
+                    if (binding == null) initvalue = SExp.NIL;
+                    else initvalue = binding.car.eval(newScope);
+
+                    newScope.bind(var, new VariableEntry(initvalue));
+
+                    // next let binding
+                    letBinding = letBinding.cdr;
+                }
+
+                // evaluate all forms with the new scope
+                arguments = arguments.cdr;
+
+                while (arguments != null) {
+                    retVal = arguments.car.eval(newScope);
+                    arguments = arguments.cdr;
+                }
+
+                return retVal;
+            }
+        };
+
+        // ----
+        // LIST
+        // ----
+
+        final SpecialFormEntry LIST = new SpecialFormEntry(
+            environment,
+            new FormHelpTopic("LIST", "create a list",
+                "(list <object>*) => list",
+                "list returns a list containing the supplied objects.",
+                "object", "an object.",
+                "list", "a list."))
+        {
+            public SExp call(SymbolTable symbolTable, Seq arguments)
+            throws LispException {
+
+                ArrayList<SExp> values = new ArrayList<SExp>();
+                Seq retVal = null;
+
+                if (arguments == null) return SExp.NIL;
+
+                while(arguments != null) {
+                    // eval and push the current object
+                    values.add(arguments.car.eval(symbolTable));
+
+                    // next object in argument list
+                    arguments = arguments.cdr;
+                }
+
+                for (int i = values.size(); i != 0;)
+                    retVal = new Seq(values.get(--i), retVal);
+
+                return new List(retVal);
+            }
+        };
+
+        // -----
+        // QUOTE
+        // -----
+
+        final SpecialFormEntry QUOTE = new SpecialFormEntry(
+            environment,
+            new FormHelpTopic("QUOTE", "Return objects unevaluated.",
+                "(quote <object>) => <object>",
+                "The quote special operator just returns object. The "
+                + "consequences are undefined if literal objects (including "
+                + "quoted objects) are destructively modified. ",
+                "object", "an object; not evaluated."))
+        {
+            public SExp call(SymbolTable symbolTable, Seq arguments)
+            throws LispException {
+                if (arguments == null)
+                    throw new InvalidArgumentQuantityException(1, 0);
+
+                return arguments.car;
+            }
+        };
+
+        // -----
+        // PROGN
+        // -----
+
+        final SpecialFormEntry PROGN = new SpecialFormEntry(
+            environment,
+            new FormHelpTopic("PROGN",
+                "evaluate forms in the order they are given",
+                "(progn <form>*) => <result>*",
+                "progn evaluates forms, in the order in which they are given. "
+                    + "The values of each form but the last are discarded. If "
+                    + "progn appears as a top level form, then all forms "
+                    + "within that progn are considered by the compiler to be "
+                    + "top level forms. ",
+                "form", "a list of forms",
+                "result", "the value of the last form"))
+        {
+            public SExp call(SymbolTable symbolTable, Seq arguments)
+            throws LispException {
+
+                SExp result = SExp.NIL;
+
+                // evaluate all forms, left to right
+                while (arguments != null)  {
+                    result = arguments.car.eval(symbolTable);
+                    arguments = arguments.cdr;
+                }
+
+                return result;
+            }
+        };
+
+        // ----
+        // SETQ
+        // ----
+
+        final SpecialFormEntry SETQ = new SpecialFormEntry(
+            environment,
+            new FormHelpTopic("SETQ", "Assigns values to variables.",
+                "(setq [<name> <form>]*)",
+                "Assigns values to variables.  (setq var1 form1 var2 "
+                    + "form2 ...) is the simple variable assignment statement "
+                    + "of Lisp. First form1 is evaluated and the result is "
+                    + "stored in the variable var1, then form2 is evaluated "
+                    + "and the result stored in var2, and so forth. setq may "
+                    + "be used for assignment of both lexical and dynamic "
+                    + "variables. If any var refers to a binding made by "
+                    + "symbol-macrolet, then that var is treated as if setf "
+                    + "(not setq) had been used. ",
+                "name",
+                "a symbol naming a variable other than a constant variable",
+                "form", "a form"))
+        {
+            public SExp call(SymbolTable symbolTable, Seq arguments)
+            throws LispException {
+                
+                Symbol variableName;
+                SExp variableValue = SExp.NIL;
+
+                if (arguments.length() % 2 != 0)
+                    throw new InvalidArgumentQuantityException(
+                        "there must be an even number of arguments "
+                        + "(name, value pairs)");
+
+                // treat each pair
+                while (arguments != null) {
+
+                    // first argument of pair: Symbol for variable name
+                    if (!(arguments.car instanceof Symbol))
+                        throw new TypeException(arguments.car, Symbol.class);
+
+                    variableName = (Symbol) arguments.car;
+
+                    // TODO: check for redifinition of variable and warn or err
+                    // if the variable is a constant
+
+                    // second argument: variable value
+                    arguments = arguments.cdr;
+                    assert (arguments != null);
+
+                    variableValue = arguments.car.eval(symbolTable);
+
+                    symbolTable.rebind(variableName,
+                        new VariableEntry(variableValue));
+
+                    arguments = arguments.cdr;
+                }
+
+                return variableValue;
+            }
+        };
+
+        // -----
+        // TRACE
+        // -----
+
+        final SpecialFormEntry TRACE = new SpecialFormEntry(
+            environment,
+            new FormHelpTopic("TRACE",
+                "enable trace information for a function",
+                "(trace <funcname>)",
+                "Turn on trace information for a function.",
+                "funcname", "the name of the function to trace"))
+         {
+            public SExp call(SymbolTable symbolTable, Seq arguments)
+            throws LispException {
+
+                if (arguments == null || arguments.car == null)
+                    return SExp.NIL;
+
+                if (!(arguments.car instanceof Symbol))
+                    throw new LispException(arguments.car.toString()
+                        + " is not a valid function name.");
+
+                FormEntry fe = symbolTable.lookupFunction((Symbol) arguments.car);
+
+                if (fe instanceof FunctionEntry) ((FunctionEntry) fe).enableTrace(true);
+                // TODO: else throw error
+
+                return SExp.NIL;
+            }
+         };
+
         environment.globalSymbolTable.bind(new Symbol("-"), DIF);
-        environment.globalSymbolTable.bind(new Symbol("*"), MUL);
         environment.globalSymbolTable.bind(new Symbol("/"), DIV);
+        environment.globalSymbolTable.bind(new Symbol("*"), MUL);
+        environment.globalSymbolTable.bind(new Symbol("+"), SUM);
+        environment.globalSymbolTable.bind(new Symbol("DEFUN"), DEFUN);
+        environment.globalSymbolTable.bind(new Symbol("DEFVAR"), DEFVAR);
         environment.globalSymbolTable.bind(new Symbol("ENABLE-DEBUG-AST"), ENABLEDEBUGAST);
+        environment.globalSymbolTable.bind(new Symbol("HELP"), HELP);
+        environment.globalSymbolTable.bind(new Symbol("IF"), IF);
+        environment.globalSymbolTable.bind(new Symbol("LET"), LET);
+        environment.globalSymbolTable.bind(new Symbol("LET*"), LET_STAR);
+        environment.globalSymbolTable.bind(new Symbol("LIST"), LIST);
+        environment.globalSymbolTable.bind(new Symbol("QUOTE"), QUOTE);
+        environment.globalSymbolTable.bind(new Symbol("PROGN"), PROGN);
+        environment.globalSymbolTable.bind(new Symbol("SETQ"), SETQ);
+        environment.globalSymbolTable.bind(new Symbol("TRACE"), TRACE);
     }
 }

@@ -11,6 +11,7 @@ package edu.utexas.cs345.jdblisp.parser;
 import edu.utexas.cs345.jdblisp.*;
 public class Parser {
 
+    private static Symbol QUOTE_SYMB = new Symbol("QUOTE");
 }
 
 PARSER_END(Parser)
@@ -28,12 +29,14 @@ TOKEN : /* PUNCTUATION */
 {	< LPAREN: "(" >
 |	< RPAREN: ")" >
 |   < NIL:    (["N","n"]["I","i"]["L","l"])>
+|   < QUOTE:  "'" >
+|   < KEYWORD: ":" >
 
 }
 
 TOKEN : /* LITERALS & SYMBOLS */
 {   < NUMB: (["+", "-"])? (["0"-"9"])+ ("." (["0"-"9"])+ )? >
-|   < STRG: "\"" (["A"-"Z", "a"-"z", "_"])* "\"" >
+|   < STRG: "\"" (~["\""])* "\"" >
 |	< SYMB: (["A"-"Z", "a"-"z", "_", "+", "-", "*", "/", "="])+
             (["A"-"Z", "a"-"z", "0"-"9",
                 "_", "+", "-", "*", "/", "="])? >
@@ -45,9 +48,10 @@ TOKEN : /* LITERALS & SYMBOLS */
 SExp sexp():
 {	SExp s = null; Token t;
 }
-{     t = <SYMB> { return new Symbol(t.image.toUpperCase()); }
+{     s = symbol() { return s; }
     | t = <STRG> { return new Str(t.image); }
     | t = <NUMB> { return new Num(t.image); }
+    | t = <QUOTE> s = sexp() { return new List(new Seq(QUOTE_SYMB, s)); }
     | s = list() { return s; }     
 }
 
@@ -64,10 +68,19 @@ List list():
 /**
  * Seq -> null | SExp Seq
  */
- Seq seq():
- {	Seq sq; SExp se;
- }
- {  [ se = sexp() sq = seq() { return new Seq(se, sq); } ]
- 	    
- 	{ return null; }
- }
+Seq seq():
+{	Seq sq; SExp se;
+}
+{  [ se = sexp() sq = seq() { return new Seq(se, sq); } ]
+    { return null; }
+}
+
+/**
+ * Symbol -> Symbol | Keyword Symbol
+ */
+Symbol symbol():
+{ Token t;
+}
+{   t = <SYMB> { return new Symbol(t.image.toUpperCase()); }
+   | <KEYWORD> t = <SYMB> { return new Keyword(t.image.toUpperCase()); }
+}
