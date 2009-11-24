@@ -30,7 +30,12 @@ public class List implements SExp {
             // look up in the symbol table
             FormEntry functionEntry = table.lookupFunction((Symbol) seq.car);
 
-            // call function
+            // throw an eror if it is not defined
+            if (functionEntry == null)
+                throw new LispException("Undefined function "
+                    + ((Symbol) seq.car).name);
+
+            // call function if it is
             return functionEntry.call(table, seq.cdr);
 
         }

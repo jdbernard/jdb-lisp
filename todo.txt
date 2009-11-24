@@ -2,12 +2,20 @@ Outstanding
 -----------
 
     - Implement FORMAT
+    - Implement GETF
     - Implement lambdas
     - Implement LIST*
     - Implement macros
     - Implement packages
     - Implement READ and PRINT
+    - Implement SETF
     - Redefine DEFUN as a macro
+    - Help for property list
+    - Help for keyword
+    - Help for symbol
+    - Help for sexp
+    - Help for number
+    - Help for string
 
 Partially Done
 --------------

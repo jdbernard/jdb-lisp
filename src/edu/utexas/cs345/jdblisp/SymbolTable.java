@@ -81,8 +81,7 @@ public class SymbolTable {
         if (fe != null) return fe;
 
         // did not find function, and there is no outer scope
-        if (enclosingTable == null)
-            throw new LispException("Undefined function " + s.toString());
+        if (enclosingTable == null) return null;
 
         // search outer scope
         return enclosingTable.lookupFunction(s);
@@ -95,8 +94,7 @@ public class SymbolTable {
         if (ve != null) return ve;
 
         // did not find variable entry and there is no outer scope
-        if (enclosingTable == null)
-            throw new LispException("Undefined variable " + s.toString());
+        if (enclosingTable == null) return null;
 
         // search outer scope
         return enclosingTable.lookupVariable(s);

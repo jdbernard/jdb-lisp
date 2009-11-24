@@ -35,6 +35,7 @@ public class Seq implements SExp {
         return 1 + cdr.length();
     }
 
+    @Override
     public String display(String offset) {
         StringBuilder sb = new StringBuilder();
         sb.append(offset);

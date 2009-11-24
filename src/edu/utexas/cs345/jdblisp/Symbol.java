@@ -10,7 +10,12 @@ public class Symbol implements SExp {
 
     /** {@inheritdoc}*/
     public SExp eval(SymbolTable table) throws LispException {
+        // lookup value in the symbol table
         VariableEntry ve = table.lookupVariable(this);
+
+        // err if not defined
+        if (ve == null) throw new UndefinedVariableException(this);
+
         return ve.value;
     }
 

@@ -222,6 +222,41 @@ public abstract class SpecialFormEntry implements FormEntry {
             }
         };
 
+        // ----
+        // CONS
+        // ----
+
+        SpecialFormEntry CONS = new SpecialFormEntry(
+            environment,
+            new FormHelpTopic("CONS", "create a cons",
+                "(cons <object-1> <object-2>) => <cons>",
+                "Creates a fresh cons, the car of which is object-1 and the "
+                    + "cdr of which is object-2.",
+                "object-1", "an object",
+                "object-2", "an object",
+                "cons", "a cons"))
+        {
+            public SExp call(SymbolTable symbolTable, Seq arguments)
+            throws LispException {
+                
+                SExp object1, object2;
+                Cons cons;
+
+                if (arguments.length() != 2)
+                    throw new InvalidArgumentQuantityException(2,
+                        arguments.length());
+
+                // get the two objects
+                object1 = arguments.car.eval(symbolTable);
+                object2 = arguments.cdr.car.eval(symbolTable);
+
+                if (object2 instanceof List) cons = new Cons(object1, (List) object2);
+                else cons = new Cons(object1, object2);
+
+                return new List(cons);
+            }
+        };
+
         // -----
         // DEFUN
         // -----
@@ -326,17 +361,18 @@ public abstract class SpecialFormEntry implements FormEntry {
 
                 // second argument: initial value
                 arguments = arguments.cdr;
-                if (arguments != null) 
+                if (arguments != null) {
                     initValue = arguments.car.eval(symbolTable);
                 
-                // thrid argument: documentation
-                arguments = arguments.cdr;
-                if (arguments != null) {
-                    if (!(arguments.car instanceof Str))
-                        throw new TypeException(arguments.car, Str.class);
+                    // third argument: documentation
+                    arguments = arguments.cdr;
+                    if (arguments != null) {
+                        if (!(arguments.car instanceof Str))
+                            throw new TypeException(arguments.car, Str.class);
 
-                    helpinfo = new HelpTopic(name.name, "variable", 
-                        ((Str) arguments.car).value);
+                        helpinfo = new HelpTopic(name.toString(), "variable", 
+                            ((Str) arguments.car).value);
+                    }
                 }
 
                 symbolTable.bind(name,
@@ -422,6 +458,69 @@ public abstract class SpecialFormEntry implements FormEntry {
         };
 
         // ----
+        // GETF
+        // ----
+
+        SpecialFormEntry GETF = new SpecialFormEntry(
+            environment,
+            new FormHelpTopic("GETF", "",
+                "(getf <plist> <indicator> [<default>]) => <value>",
+                "getf finds a property on the plist whose property indicator "
+                    + "is identical to indicator, and returns its "
+                    + "corresponding property value. If there are multiple "
+                    + "properties with that property indicator, getf uses the "
+                    + "first such property. If there is no property with that "
+                    + "property indicator, default is returned.",
+                "plist", "a property list.",
+                "indicator", "an object",
+                "default", "an object. The default is NIL",
+                "value", "an object"))
+        {
+            public SExp call(SymbolTable symbolTable, Seq arguments)
+            throws LispException {
+
+                SExp plistEval;
+                Seq plistSeq;
+                SExp indicator;
+                SExp retVal = SExp.NIL;
+
+                // check number of arguments
+                if (arguments.length() < 2)
+                    throw new InvalidArgumentQuantityException(
+                        "form requires at least 2 arguments.");
+
+                // first argument: property list
+                plistEval = arguments.car.eval(symbolTable);
+                if (!(plistEval instanceof List))
+                    throw new TypeException(arguments.car, List.class);
+
+                plistSeq = ((List) plistEval).seq;
+
+                // second argument: indicator
+                arguments = arguments.cdr;
+                indicator = arguments.car.eval(symbolTable);
+
+                // third argument: default value
+                arguments = arguments.cdr;
+                if (arguments != null)
+                    retVal = arguments.car.eval(symbolTable);
+
+                while(plistSeq != null) {
+
+                    // check this value for equality
+                    if (plistSeq.car.equals(indicator))
+                        if (plistSeq.cdr != null)
+                            return plistSeq.cdr.car;
+
+                    // advance to the next pair (or terminate)
+                    plistSeq = (plistSeq.cdr == null ? null : plistSeq.cdr.cdr);
+                }
+
+                return retVal;
+            }
+        };
+
+        // ----
         // HELP
         // ----
 
@@ -429,48 +528,45 @@ public abstract class SpecialFormEntry implements FormEntry {
             environment,
             new FormHelpTopic("HELP",
                 "Display online help information for a topic.",
-                "(help <topic>)",
+                "(help [<topic>*])",
                 null,
                 "topic",
-                    "either a string representing the topic to lookup or a symbol"))
+                "either a string representing the topic to lookup or a symbol"))
         {
             public SExp call(SymbolTable symbolTable, Seq arguments)
             throws LispException {
                 
-                HelpTopic topic = null;
+                ArrayList<HelpTopic> topics = new ArrayList<HelpTopic>();
 
                 // no arguments: print help for HELP
                 if (arguments == null)
                     return this.call(symbolTable,
                         new Seq(new Symbol("HELP"), null));
 
-                // too many arguments
-                if (arguments.length() > 1)
-                    throw new InvalidArgumentQuantityException(1,
-                        arguments.length());
+                while (arguments != null) {
+                    // try to find the topic or function help
+                    if (arguments.car instanceof Str) {
+                        topics.add(HelpTopic.helpTopics.get(
+                            ((Str) arguments.car).value));
+                    } else if (arguments.car instanceof Symbol) {
 
-                // try to find the topic or function help
-                if (arguments.car instanceof Str) {
-                    topic = HelpTopic.helpTopics.get(
-                        ((Str) arguments.car).value);
-                } else if (arguments.car instanceof Symbol) {
-                    try {
+                        // lookup help for funtion
                         FormEntry fe = symbolTable.lookupFunction(
                             (Symbol) arguments.car);
-                        topic = fe.helpinfo();
-                    } catch (LispException le) { topic = null; }
+                        if (fe != null) topics.add(fe.helpinfo());
+
+                        // lookup help for variable
+                        VariableEntry ve = symbolTable.lookupVariable(
+                            (Symbol) arguments.car);
+                        if (ve != null) topics.add(ve.helpinfo);
+                    }
+
+                    arguments = arguments.cdr;
                 }
 
-                // no topic found
-                if (topic == null)  {
-                    new PrintWriter(environment.getOutputStream(), true)
-                        .println(
-                            "No help information found for topic '"
-                            + arguments.car.toString() + "'.");
-                    return SExp.NIL;
-                }
+                for (HelpTopic topic : topics)
+                    topic.print(environment.getOutputStream());
 
-                topic.print(environment.getOutputStream());
                 return SExp.NIL;
             }
         };
@@ -866,7 +962,13 @@ public abstract class SpecialFormEntry implements FormEntry {
 
                 FormEntry fe = symbolTable.lookupFunction((Symbol) arguments.car);
 
-                if (fe instanceof FunctionEntry) ((FunctionEntry) fe).enableTrace(true);
+                if (fe == null)
+                    throw new UndefinedFunctionException(
+                        ((Symbol) arguments.car));
+
+                if (fe instanceof FunctionEntry)
+                    ((FunctionEntry) fe).enableTrace(true);
+
                 // TODO: else throw error
 
                 return SExp.NIL;
@@ -877,9 +979,12 @@ public abstract class SpecialFormEntry implements FormEntry {
         environment.globalSymbolTable.bind(new Symbol("/"), DIV);
         environment.globalSymbolTable.bind(new Symbol("*"), MUL);
         environment.globalSymbolTable.bind(new Symbol("+"), SUM);
+        environment.globalSymbolTable.bind(new Symbol("CONS"), CONS);
         environment.globalSymbolTable.bind(new Symbol("DEFUN"), DEFUN);
+        environment.globalSymbolTable.bind(new Symbol("DEFPARAMETER"), DEFPARAMETER);
         environment.globalSymbolTable.bind(new Symbol("DEFVAR"), DEFVAR);
         environment.globalSymbolTable.bind(new Symbol("ENABLE-DEBUG-AST"), ENABLEDEBUGAST);
+        environment.globalSymbolTable.bind(new Symbol("GETF"), GETF);
         environment.globalSymbolTable.bind(new Symbol("HELP"), HELP);
         environment.globalSymbolTable.bind(new Symbol("IF"), IF);
         environment.globalSymbolTable.bind(new Symbol("LET"), LET);

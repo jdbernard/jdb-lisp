@@ -94,7 +94,7 @@ public class HelpTopic {
             }
 
             // any left over, it will fit on one line
-            if (i - lineStartIdx > 1) {
+            if (i - lineStartIdx > 0) {
                 String lastLine = message.substring(lineStartIdx);
                 printer.print(lastLine);
                 curLineLength += lastLine.length();
