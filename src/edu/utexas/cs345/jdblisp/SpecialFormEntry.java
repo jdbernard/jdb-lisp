@@ -7,22 +7,27 @@ import java.util.ArrayList;
  * SpecialFormEntry
  * @author Jonathan Bernard (jdbernard@gmail.com)
  */
-public abstract class SpecialFormEntry implements FormEntry {
-
-    public final HelpTopic helpinfo;
+public abstract class SpecialFormEntry extends FormEntry {
 
     protected LISPRuntime environment;
 
-    public SpecialFormEntry(LISPRuntime environment, HelpTopic helpinfo) {
+    public SpecialFormEntry(Symbol name, LISPRuntime environment, HelpTopic helpinfo) {
+        super(name, helpinfo);
         this.environment = environment;
-        this.helpinfo = helpinfo;
     }
-
-    public HelpTopic helpinfo() { return helpinfo; }
 
     public abstract SExp call(SymbolTable symbolTable, Seq arguments)
         throws LispException;
 
+    @Override
+    public String display(String offset) {
+        return offset + "Special Form Entry: " + name.toString();
+    }
+
+    @Override
+    public String toString() {
+        return "<SPECIAL-FORM (" + name.toString() + ") >";
+    }
     // ------------------------
     // SPECIAL FORMS DEFINITION
     // ------------------------
@@ -40,6 +45,7 @@ public abstract class SpecialFormEntry implements FormEntry {
         // ---
 
         final SpecialFormEntry DIV = new SpecialFormEntry(
+            new Symbol("/"),
             environment,
             new FormHelpTopic("/", "Divide several expressions.",
                 "(- divisor) | (- dividend <divisor_1> [... <divisor_n>])",
@@ -99,6 +105,7 @@ public abstract class SpecialFormEntry implements FormEntry {
         // ---
 
         final SpecialFormEntry DIF = new SpecialFormEntry(
+            new Symbol("-"),
             environment,
             new FormHelpTopic("-", "Subtract several expressions.",
                 "(- subtrahend) | (- <minuend> <subtrahend_1> [... <subtrahend_n>])",
@@ -158,6 +165,7 @@ public abstract class SpecialFormEntry implements FormEntry {
         // ---
 
         final SpecialFormEntry MUL = new SpecialFormEntry(
+            new Symbol("*"),
             environment,
             new FormHelpTopic("*", "Multiply several expressions.",
                 "(+ [<multiplicand_1> ... <multiplicand_n>])",
@@ -193,6 +201,7 @@ public abstract class SpecialFormEntry implements FormEntry {
         // ---
 
         final SpecialFormEntry SUM = new SpecialFormEntry(
+            new Symbol("+"),
             environment,
             new FormHelpTopic("+", "Sum several expressions.",
                 "(+ [<addend_1> ... <addend_n>])",
@@ -222,11 +231,18 @@ public abstract class SpecialFormEntry implements FormEntry {
             }
         };
 
+        // ---
+        // CAR
+        // ---
+
+        // TODO
+
         // ----
         // CONS
         // ----
 
-        SpecialFormEntry CONS = new SpecialFormEntry(
+        final SpecialFormEntry CONS = new SpecialFormEntry(
+            new Symbol("CONS"),
             environment,
             new FormHelpTopic("CONS", "create a cons",
                 "(cons <object-1> <object-2>) => <cons>",
@@ -262,6 +278,7 @@ public abstract class SpecialFormEntry implements FormEntry {
         // -----
 
         final SpecialFormEntry DEFUN = new SpecialFormEntry(
+            new Symbol("DEFUN"),
             environment,
             new FormHelpTopic("DEFUN", "Define a (global) function.",
                 "(defun <name> (<param-list>) <func-body>)",
@@ -330,6 +347,7 @@ public abstract class SpecialFormEntry implements FormEntry {
         // ------------
 
         final SpecialFormEntry DEFPARAMETER = new SpecialFormEntry(
+            new Symbol("DEFPARAMETER"),
             environment,
             new FormHelpTopic("DEFPARAMETER", "define a dynamic variable",
                 "(defparameter <name> <initial-value> [<documentation>]) => <name>",
@@ -388,6 +406,7 @@ public abstract class SpecialFormEntry implements FormEntry {
         // ------
 
         final SpecialFormEntry DEFVAR = new SpecialFormEntry(
+            new Symbol("DEFVAR"),
             environment,
             new FormHelpTopic("DEFVAR", "define a variable",
                 "(defvar <name> [<initial-value> [<documentation>]]) => <name>",
@@ -431,6 +450,7 @@ public abstract class SpecialFormEntry implements FormEntry {
         // ----------------
 
         final SpecialFormEntry ENABLEDEBUGAST = new SpecialFormEntry(
+            new Symbol("ENABLE-DEBUG-AST"),
             environment,
             new FormHelpTopic("ENABLE-DEBUG-AST",
                 "Enable debug information: abstract syntax tree.",
@@ -457,11 +477,93 @@ public abstract class SpecialFormEntry implements FormEntry {
             }
         };
 
+        // --------
+        // FUNCTION
+        // --------
+
+        final SpecialFormEntry FUNCTION = new SpecialFormEntry(
+            new Symbol("FUNCTION"),
+            environment,
+            new FormHelpTopic("FUNCTION", "retrieve a function",
+                "(function <func-name>) => <function>",
+                "function returns the function specified by the symbol passed "
+                    + " as an argument. #'funcname is equivalent to (function "
+                    + " funcname).",
+                "func-name", "a symbol naming a function",
+                "function", "a function"))
+        {
+            public SExp call(SymbolTable symbolTable, Seq arguments) 
+            throws LispException {
+                FormEntry fe = null;
+
+                if (arguments == null || arguments.length() != 1)
+                    throw new InvalidArgumentQuantityException(1);
+
+                if (!(arguments.car instanceof Symbol))
+                    throw new TypeException(arguments.car, Symbol.class);
+
+                fe = symbolTable.lookupFunction((Symbol) arguments.car);
+
+                if (fe == null)
+                    throw new UndefinedFunctionException((Symbol) arguments.car);
+
+                return fe;
+            }
+        };
+
+        // -------
+        // FUNCALL
+        // -------
+
+        final SpecialFormEntry FUNCALL = new SpecialFormEntry(
+            new Symbol("FUNCALL"),
+            environment,
+            new FormHelpTopic("FUNCALL", "make a function call",
+                "(funcall <function> <arg>*) => <result>",
+                "funcall applies function to args. If function is a symbol, "
+                    + "it is coerced to a function as if by finding its "
+                    + "functional value in the global environment.",
+                "function", "a function designator",
+                "arg", "an object",
+                "results", "the result of the function call"))
+        {
+            public SExp call(SymbolTable symbolTable, Seq arguments)
+            throws LispException {
+
+                if (arguments == null)
+                    throw new InvalidArgumentQuantityException(
+                        "form requires at least one argument.");
+
+                // first argument: function designator
+                SExp func = arguments.car.eval(symbolTable);
+                FormEntry fe = null;
+                arguments = arguments.cdr;
+
+                // cast if already a form entry
+                if (func instanceof FormEntry) fe = (FormEntry) func;
+
+                // lookup the function if it is a symbol
+                if (func instanceof Symbol) {
+                    fe = environment.globalSymbolTable
+                        .lookupFunction((Symbol) func);
+                    if (fe == null)
+                        throw new UndefinedFunctionException((Symbol) func);
+                }
+
+                if (fe == null)
+                    throw new TypeException(func, FormEntry.class);
+
+                // make the function call
+                return fe.call(symbolTable, arguments);
+            }
+        };
+
         // ----
         // GETF
         // ----
 
-        SpecialFormEntry GETF = new SpecialFormEntry(
+        final SpecialFormEntry GETF = new SpecialFormEntry(
+            new Symbol("GETF"),
             environment,
             new FormHelpTopic("GETF", "",
                 "(getf <plist> <indicator> [<default>]) => <value>",
@@ -525,6 +627,7 @@ public abstract class SpecialFormEntry implements FormEntry {
         // ----
 
         final SpecialFormEntry HELP = new SpecialFormEntry(
+            new Symbol("HELP"),
             environment,
             new FormHelpTopic("HELP",
                 "Display online help information for a topic.",
@@ -553,7 +656,7 @@ public abstract class SpecialFormEntry implements FormEntry {
                         // lookup help for funtion
                         FormEntry fe = symbolTable.lookupFunction(
                             (Symbol) arguments.car);
-                        if (fe != null) topics.add(fe.helpinfo());
+                        if (fe != null) topics.add(fe.helpinfo);
 
                         // lookup help for variable
                         VariableEntry ve = symbolTable.lookupVariable(
@@ -576,6 +679,7 @@ public abstract class SpecialFormEntry implements FormEntry {
         // --
 
         final SpecialFormEntry IF = new SpecialFormEntry(
+            new Symbol("IF"),
             environment,
             new FormHelpTopic("IF",
                 "conditional code execution",
@@ -612,11 +716,63 @@ public abstract class SpecialFormEntry implements FormEntry {
             }
         };
 
+        // ------
+        // LAMBDA
+        // ------
+
+        final SpecialFormEntry LAMBDA = new SpecialFormEntry(
+            new Symbol("LAMBDA"),
+            environment,
+            new FormHelpTopic("LAMDA",
+                "create an anonymous function over the current lexical closure",
+                "(lambda <param-list> <form>) => <lambda>",
+                "",
+                "param-list", "a list of symbols",
+                "form", "a form",
+                "lambda", "a function"))
+        {
+            public SExp call(SymbolTable symbolTable, Seq arguments)
+            throws LispException {
+                
+                ArrayList<Symbol> parameters = new ArrayList<Symbol>();
+                SExp body;
+                Seq paramSeq;
+
+                if (arguments.length() != 2)
+                    throw new InvalidArgumentQuantityException(
+                        2, arguments.length());
+
+                // first parameter: parameters to the lambda
+                if (!(arguments.car instanceof List))
+                    throw new TypeException(arguments.car, List.class);
+
+                paramSeq = ((List) arguments.car).seq;
+                while (paramSeq != null) {
+                    if (!(paramSeq.car instanceof Symbol))
+                        throw new TypeException(paramSeq.car, Symbol.class);
+
+                    parameters.add((Symbol) paramSeq.car);
+                    paramSeq = paramSeq.cdr;
+                }
+
+                // second argument: function body
+                arguments = arguments.cdr;
+                assert (arguments != null);
+
+                body = arguments.car;
+
+                return new Lambda(parameters.toArray(new Symbol[]{}),
+                    body, symbolTable);
+            }
+        };
+
+
         // ---
         // LET
         // ---
 
         final SpecialFormEntry LET = new SpecialFormEntry(
+            new Symbol("LET"),
             environment,
             new FormHelpTopic("LET", "create new lexical variable bindings",
                 "(let (([<var> <init-form>])*) <form>*) => <result>",
@@ -705,6 +861,7 @@ public abstract class SpecialFormEntry implements FormEntry {
         // ----
 
         final SpecialFormEntry LET_STAR = new SpecialFormEntry(
+            new Symbol("LET*"),
             environment,
             new FormHelpTopic("LET*", "create new lexical variable bindings",
                 "(let (([<var> <init-form>])*) <form>*) => <result>",
@@ -794,6 +951,7 @@ public abstract class SpecialFormEntry implements FormEntry {
         // ----
 
         final SpecialFormEntry LIST = new SpecialFormEntry(
+            new Symbol("LIST"),
             environment,
             new FormHelpTopic("LIST", "create a list",
                 "(list <object>*) => list",
@@ -829,6 +987,7 @@ public abstract class SpecialFormEntry implements FormEntry {
         // -----
 
         final SpecialFormEntry QUOTE = new SpecialFormEntry(
+            new Symbol("QUOTE"),
             environment,
             new FormHelpTopic("QUOTE", "Return objects unevaluated.",
                 "(quote <object>) => <object>",
@@ -851,6 +1010,7 @@ public abstract class SpecialFormEntry implements FormEntry {
         // -----
 
         final SpecialFormEntry PROGN = new SpecialFormEntry(
+            new Symbol("PROGN"),
             environment,
             new FormHelpTopic("PROGN",
                 "evaluate forms in the order they are given",
@@ -883,6 +1043,7 @@ public abstract class SpecialFormEntry implements FormEntry {
         // ----
 
         final SpecialFormEntry SETQ = new SpecialFormEntry(
+            new Symbol("SETQ"),
             environment,
             new FormHelpTopic("SETQ", "Assigns values to variables.",
                 "(setq [<name> <form>]*)",
@@ -943,6 +1104,7 @@ public abstract class SpecialFormEntry implements FormEntry {
         // -----
 
         final SpecialFormEntry TRACE = new SpecialFormEntry(
+            new Symbol("TRACE"),
             environment,
             new FormHelpTopic("TRACE",
                 "enable trace information for a function",
@@ -975,24 +1137,27 @@ public abstract class SpecialFormEntry implements FormEntry {
             }
          };
 
-        environment.globalSymbolTable.bind(new Symbol("-"), DIF);
-        environment.globalSymbolTable.bind(new Symbol("/"), DIV);
-        environment.globalSymbolTable.bind(new Symbol("*"), MUL);
-        environment.globalSymbolTable.bind(new Symbol("+"), SUM);
-        environment.globalSymbolTable.bind(new Symbol("CONS"), CONS);
-        environment.globalSymbolTable.bind(new Symbol("DEFUN"), DEFUN);
-        environment.globalSymbolTable.bind(new Symbol("DEFPARAMETER"), DEFPARAMETER);
-        environment.globalSymbolTable.bind(new Symbol("DEFVAR"), DEFVAR);
-        environment.globalSymbolTable.bind(new Symbol("ENABLE-DEBUG-AST"), ENABLEDEBUGAST);
-        environment.globalSymbolTable.bind(new Symbol("GETF"), GETF);
-        environment.globalSymbolTable.bind(new Symbol("HELP"), HELP);
-        environment.globalSymbolTable.bind(new Symbol("IF"), IF);
-        environment.globalSymbolTable.bind(new Symbol("LET"), LET);
-        environment.globalSymbolTable.bind(new Symbol("LET*"), LET_STAR);
-        environment.globalSymbolTable.bind(new Symbol("LIST"), LIST);
-        environment.globalSymbolTable.bind(new Symbol("QUOTE"), QUOTE);
-        environment.globalSymbolTable.bind(new Symbol("PROGN"), PROGN);
-        environment.globalSymbolTable.bind(new Symbol("SETQ"), SETQ);
-        environment.globalSymbolTable.bind(new Symbol("TRACE"), TRACE);
+        environment.globalSymbolTable.bind(DIF.name, DIF);
+        environment.globalSymbolTable.bind(DIV.name, DIV);
+        environment.globalSymbolTable.bind(MUL.name, MUL);
+        environment.globalSymbolTable.bind(SUM.name, SUM);
+        environment.globalSymbolTable.bind(CONS.name, CONS);
+        environment.globalSymbolTable.bind(DEFUN.name, DEFUN);
+        environment.globalSymbolTable.bind(DEFPARAMETER.name, DEFPARAMETER);
+        environment.globalSymbolTable.bind(DEFVAR.name, DEFVAR);
+        environment.globalSymbolTable.bind(ENABLEDEBUGAST.name, ENABLEDEBUGAST);
+        environment.globalSymbolTable.bind(FUNCALL.name, FUNCALL);
+        environment.globalSymbolTable.bind(FUNCTION.name, FUNCTION);
+        environment.globalSymbolTable.bind(GETF.name, GETF);
+        environment.globalSymbolTable.bind(HELP.name, HELP);
+        environment.globalSymbolTable.bind(IF.name, IF);
+        environment.globalSymbolTable.bind(LAMBDA.name, LAMBDA);
+        environment.globalSymbolTable.bind(LET.name, LET);
+        environment.globalSymbolTable.bind(LET_STAR.name, LET_STAR);
+        environment.globalSymbolTable.bind(LIST.name, LIST);
+        environment.globalSymbolTable.bind(QUOTE.name, QUOTE);
+        environment.globalSymbolTable.bind(PROGN.name, PROGN);
+        environment.globalSymbolTable.bind(SETQ.name, SETQ);
+        environment.globalSymbolTable.bind(TRACE.name, TRACE);
     }
 }

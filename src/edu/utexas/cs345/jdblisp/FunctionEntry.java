@@ -4,10 +4,8 @@ package edu.utexas.cs345.jdblisp;
  * FunctionEntry
  * @author Jonathan Bernard (jdbernard@gmail.com)
  */
-public class FunctionEntry implements FormEntry {
+public class FunctionEntry extends FormEntry {
 
-    public final HelpTopic helpinfo;
-    public final Symbol name;
     protected final Symbol[] parameters;
     protected final SExp body;
 
@@ -16,6 +14,7 @@ public class FunctionEntry implements FormEntry {
     //private Logger traceLog = Logger.getLogger(getClass());
 
     public FunctionEntry(Symbol name, Symbol[] parameters, SExp body) {
+        super(name, null);
 
         // build invocation help string
         String invokation = "(" + name.name;
@@ -26,7 +25,6 @@ public class FunctionEntry implements FormEntry {
         // build help topic
         FormHelpTopic helpinfo = new FormHelpTopic(name.name, null, invokation, bodyInfo);
 
-        this.name = name;
         this.parameters = parameters;
         this.body = body;
         this.helpinfo = helpinfo;
@@ -34,15 +32,20 @@ public class FunctionEntry implements FormEntry {
 
     public FunctionEntry(Symbol name, Symbol[] parameters, SExp body,
     HelpTopic helpinfo) {
-        this.name = name;
+        super(name, helpinfo);
         this.parameters = parameters;
         this.body = body;
-        this.helpinfo = helpinfo;
     }
 
     public boolean isTraceEnabled() { return traceEnabled ;}
 
     public void enableTrace(boolean enable) { this.traceEnabled = enable; }
+
+    public String display(String offset) {
+        return offset + "Function: " + name.toString();
+    }
+
+    public String toString() { return "<FUNCTION " + name.toString() + ">"; }
 
     public SExp call(SymbolTable symbolTable, Seq arguments) throws LispException {
 

@@ -40,7 +40,15 @@ public class List implements SExp {
 
         }
 
-        return SExp.NIL;
+        // if the car is not a symbol, it had better be a lambda
+        SExp evaluated = seq.car.eval(table);
+        if (evaluated instanceof Lambda) {
+            return ((Lambda) evaluated).call(table, seq.cdr);
+        }
+
+        // not a function call and not a lambda, error
+        throw new TypeException(seq.car, Lambda.class);
+
     }
 
     public String display(String offset) {

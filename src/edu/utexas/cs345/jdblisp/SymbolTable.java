@@ -99,4 +99,5 @@ public class SymbolTable {
         // search outer scope
         return enclosingTable.lookupVariable(s);
     }
+
 }

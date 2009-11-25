@@ -12,6 +12,7 @@ import edu.utexas.cs345.jdblisp.*;
 public class Parser {
 
     private static Symbol QUOTE_SYMB = new Symbol("QUOTE");
+    private static Symbol FUNCTION_SYMB = new Symbol("FUNCTION");
 }
 
 PARSER_END(Parser)
@@ -30,6 +31,7 @@ TOKEN : /* PUNCTUATION */
 |	< RPAREN: ")" >
 |   < NIL:    (["N","n"]["I","i"]["L","l"])>
 |   < QUOTE:  "'" >
+|   < FUNCTION:  "#'" >
 |   < KEYWORD: ":" >
 
 }
@@ -43,7 +45,7 @@ TOKEN : /* LITERALS & SYMBOLS */
 }
 
 /**
- * SExp -> Symbol | Str | Num | List | "'" SExp
+ * SExp -> Symbol | Str | Num | List 
  */
 SExp sexp():
 {	SExp s = null; Token t;
@@ -52,6 +54,7 @@ SExp sexp():
     | t = <STRG> { return new Str(t.image); }
     | t = <NUMB> { return new Num(t.image); }
     | t = <QUOTE> s = sexp() { return new List(new Seq(QUOTE_SYMB, s)); }
+    | t = <FUNCTION> s = sexp() { return new List(new Seq(FUNCTION_SYMB, s)); }
     | s = list() { return s; }     
 }
 

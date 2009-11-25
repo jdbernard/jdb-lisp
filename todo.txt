@@ -1,11 +1,15 @@
 Outstanding
 -----------
 
+    - Implement CAR
+    - Implement CDR
     - Implement FORMAT
-    - Implement GETF
+    - Implement FIRST
     - Implement lambdas
+    - Implement LAST
     - Implement LIST*
     - Implement macros
+    - Implement arithmetic comparisons
     - Implement packages
     - Implement READ and PRINT
     - Implement SETF
@@ -20,11 +24,12 @@ Outstanding
 Partially Done
 --------------
 
-    P Implement keywords
 
 Done
 ----
 
+    D Implement keywords
+    D Implement GETF
     D Add ' notation for quote
     D Define NIL
     D Define T
