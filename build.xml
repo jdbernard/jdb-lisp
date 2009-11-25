@@ -6,6 +6,7 @@
     <path id="javac.path">
         <fileset dir="${lib.dir}">
             <include name="**/*.jar"/>
+            <exclude name="javacc"/>
         </fileset>
     </path>
 
@@ -66,7 +67,10 @@
         <mkdir dir="${dist.dir}/lib"/>
         <move file="${build.jar}" tofile="${dist.jar}" />
         <copy todir="${dist.dir}/lib">
-            <fileset dir="${lib.dir}"/>
+            <fileset dir="${lib.dir}">
+                <include name="**/*"/>
+                <exclude name="javacc"/>
+            </fileset>
         </copy>
     </target>
 </project>

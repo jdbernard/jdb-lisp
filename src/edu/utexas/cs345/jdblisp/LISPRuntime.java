@@ -23,6 +23,7 @@ public class LISPRuntime {
     private Parser parser;
 
     private boolean interactive = true;
+    private boolean stop = false;
 
     boolean dumpAST = false;
 
@@ -76,7 +77,7 @@ public class LISPRuntime {
 
         parser.ReInit(is);
         SExp sexp;
-        while (true) {
+        while (!stop) {
 
             // print prompt if applicable
             if (interactive) {
@@ -117,6 +118,8 @@ public class LISPRuntime {
     }
 
     OutputStream getOutputStream() { return os; }
+
+    void signalStop() { stop = true; }
 
     private static SymbolTable defineGlobalConstants() {
         SymbolTable constantsTable = new SymbolTable();

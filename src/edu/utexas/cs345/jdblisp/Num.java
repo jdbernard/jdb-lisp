@@ -6,7 +6,7 @@ import java.math.BigInteger;
 /**
  * @author Jonathan Bernard (jdbernard@gmail.com)
  */
-public class Num implements SExp {
+public class Num implements SExp, Comparable<Num> {
 
     private BigDecimal n;
 
@@ -73,5 +73,10 @@ public class Num implements SExp {
 
     public Num abs() {
         return new Num(n.abs());
+    }
+
+    @Override
+    public int compareTo(Num that) {
+        return this.n.compareTo(that.n);
     }
 }

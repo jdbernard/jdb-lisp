@@ -10,10 +10,22 @@ import java.util.ArrayList;
 public abstract class SpecialFormEntry extends FormEntry {
 
     protected LISPRuntime environment;
+    protected int expectedArgumentCount;
+    protected Class<? extends SExp>[] expectedArgumentTypes;
 
-    public SpecialFormEntry(Symbol name, LISPRuntime environment, HelpTopic helpinfo) {
+    public SpecialFormEntry(Symbol name, LISPRuntime environment,
+    HelpTopic helpinfo, int expectedArgCount, Class<? extends SExp>... expectedArgTypes) {
         super(name, helpinfo);
+
+        // three cases: no arguments, so EAT == null || 0; arg types homogenous
+        // so EAT == 1; arg types heterogenous, EAT == numArgs
+        assert (expectedArgumentTypes == null ||
+                expectedArgumentTypes.length <= 1 ||
+                expectedArgumentTypes.length == expectedArgumentCount);
+
         this.environment = environment;
+        this.expectedArgumentCount = expectedArgCount;
+        this.expectedArgumentTypes = expectedArgTypes;
     }
 
     public abstract SExp call(SymbolTable symbolTable, Seq arguments)
@@ -28,6 +40,56 @@ public abstract class SpecialFormEntry extends FormEntry {
     public String toString() {
         return "<SPECIAL-FORM (" + name.toString() + ") >";
     }
+
+    protected void checkArguments(Seq arguments) throws LispException {
+
+      boolean argsUnbounded = expectedArgumentCount < 0;
+      int expectedArgs = Math.abs(expectedArgumentCount);
+      int actualArgs;
+
+      // first case: expect 0 arguments
+      if (expectedArgs == 0) {
+        if (arguments != null)
+          throw new InvalidArgumentQuantityException(0, arguments.length());
+        return;
+      }
+
+      // expect at least one arg, err if none given
+      if (arguments == null)
+        throw new InvalidArgumentQuantityException(expectedArgs, 0);
+
+      actualArgs = arguments.length();
+
+      // there should be at least as many actual argument as expected
+      if ( actualArgs < expectedArgs ||
+          (actualArgs > expectedArgs && !argsUnbounded)) {
+          if (argsUnbounded)
+            throw new InvalidArgumentQuantityException("expected at least "
+                + expectedArgs + " arguments");
+          else 
+            throw new InvalidArgumentQuantityException(expectedArgs, actualArgs);
+      }
+
+      assert (expectedArgumentTypes != null &&
+              expectedArgumentTypes.length > 0);
+
+      // at this point, we know that the amount of arguments is valid
+      for (int i = 0; arguments != null; ++i) {
+        Class<? extends SExp> expectedType =
+            (i >= expectedArgumentTypes.length ?
+                expectedArgumentTypes[expectedArgumentTypes.length - 1] :
+                expectedArgumentTypes[i]);
+
+        // check the type of the argument                            
+        if (!expectedType.isAssignableFrom(arguments.car.getClass()))
+          throw new TypeException(arguments.car, expectedType);
+
+        // next argument
+        arguments = arguments.cdr;
+      }
+
+      return; // no error, good times
+    }
     // ------------------------
     // SPECIAL FORMS DEFINITION
     // ------------------------
@@ -39,6 +101,292 @@ public abstract class SpecialFormEntry extends FormEntry {
      * TODO
      */
     public static void defineSpecialForms(LISPRuntime environment) {
+
+        // ---
+        // LTE
+        // ---
+
+        final SpecialFormEntry LTE = new SpecialFormEntry(
+            new Symbol("<="),
+            environment,
+            new FormHelpTopic("<=", "Less than or equal to",
+                "(<= <number>*) => <result>",
+                "The value of <= is true if the numbers are in monotonically "
+                    + "nondecreasing order; otherwise it is false.",
+                "number", "a real",
+                "result", "a boolean"),
+            -2, Num.class)
+        {
+            public SExp call(SymbolTable symbolTable, Seq arguments)
+            throws LispException {
+
+                Num current;
+                Num next;
+
+                checkArguments(arguments);
+
+                // get first number
+                current = (Num) arguments.car;
+
+                // advance to next argument
+                arguments = arguments.cdr;
+
+                while(arguments != null) {
+                    // get next number
+                    next = (Num) arguments.car;
+
+                    // current > next, return false
+                    if (current.compareTo(next) > 0) return SExp.NIL;
+
+                    // next becomes current
+                    current = next;
+
+                    // advance to next argument
+                    arguments = arguments.cdr;
+                }
+
+                // all are nondecreasing, return true
+                return SExp.T;
+            }
+        };
+
+        // --
+        // LT
+        // --
+
+        final SpecialFormEntry LT = new SpecialFormEntry(
+            new Symbol("<"),
+            environment,
+            new FormHelpTopic("<", "Less than",
+                "(< <number>*) => <result>",
+                "The value of < is true if the numbers are in monotonically "
+                    + "increasing order; otherwise it is false.",
+                "number", "a real",
+                "result", "a boolean"),
+            -2, Num.class)
+        {
+            public SExp call(SymbolTable symbolTable, Seq arguments)
+            throws LispException {
+
+                Num current;
+                Num next;
+
+                checkArguments(arguments);
+
+                // get first number
+                current = (Num) arguments.car;
+
+                // advance to next argument
+                arguments = arguments.cdr;
+
+                while(arguments != null) {
+                    // get next number
+                    next = (Num) arguments.car;
+
+                    // current >= next, return false
+                    if (current.compareTo(next) >= 0) return SExp.NIL;
+
+                    // next becomes current
+                    current = next;
+
+                    // advance to next argument
+                    arguments = arguments.cdr;
+                }
+
+                // all are increasing, return true
+                return SExp.T;
+            }
+        };
+
+        // ---------
+        // NUMEQ (=) 
+        // ---------
+
+        final SpecialFormEntry NUMEQ = new SpecialFormEntry(
+            new Symbol("="),
+            environment,
+            new FormHelpTopic("=", "Equal to",
+                "(= <number>*) => <result>",
+                "The value of = is true if all numbers are the same in value.",
+                "number", "a number",
+                "result", "a boolean"),
+            -2, Num.class)
+        {
+            public SExp call(SymbolTable symbolTable, Seq arguments)
+            throws LispException {
+
+                Num current;
+                Num next;
+
+                checkArguments(arguments);
+
+                // get first number
+                current = (Num) arguments.car;
+
+                // advance to next argument
+                arguments = arguments.cdr;
+
+                while(arguments != null) {
+                    // get next number
+                    next = (Num) arguments.car;
+
+                    // current != next, return false
+                    if (current.compareTo(next) != 0) return SExp.NIL;
+
+                    // next becomes current
+                    current = next;
+
+                    // advance to next argument
+                    arguments = arguments.cdr;
+                }
+
+                // all are equal, return true
+                return SExp.T;
+            }
+        };
+
+        // -------------
+        // NUMNOTEQ (/=) 
+        // -------------
+
+        final SpecialFormEntry NUMNOTEQ = new SpecialFormEntry(
+            new Symbol("/="),
+            environment,
+            new FormHelpTopic("/=", "Not equal to",
+                "(/= <number>*) => <result>",
+                "The value of /= is true if no two numbers are the same in value.",
+                "number", "a number",
+                "result", "a boolean"),
+            -2, Num.class)
+        {
+            public SExp call(SymbolTable symbolTable, Seq arguments)
+            throws LispException {
+
+                Num current;
+                Num next;
+
+                checkArguments(arguments);
+
+                // get first number
+                current = (Num) arguments.car;
+
+                // advance to next argument
+                arguments = arguments.cdr;
+
+                while(arguments != null) {
+                    // get next number
+                    next = (Num) arguments.car;
+
+                    // current == next, return false
+                    if (current.compareTo(next) == 0) return SExp.NIL;
+
+                    // next becomes current
+                    current = next;
+
+                    // advance to next argument
+                    arguments = arguments.cdr;
+                }
+
+                // all are non-equal, return true
+                return SExp.T;
+            }
+        };
+
+        // --
+        // GT
+        // --
+
+        final SpecialFormEntry GT = new SpecialFormEntry(
+            new Symbol(">"),
+            environment,
+            new FormHelpTopic(">", "Greater than",
+                "(> <number>*) => <result>",
+                "The value of > is true if the numbers are in monotonically "
+                    + "decreasing order; otherwise it is false.",
+                "number", "a number",
+                "result", "a boolean"),
+            -2, Num.class)
+        {
+            public SExp call(SymbolTable symbolTable, Seq arguments)
+            throws LispException {
+
+                Num current;
+                Num next;
+
+                checkArguments(arguments);
+
+                // get first number
+                current = (Num) arguments.car;
+
+                // advance to next argument
+                arguments = arguments.cdr;
+
+                while(arguments != null) {
+                    // get next number
+                    next = (Num) arguments.car;
+
+                    // current <= next, return false
+                    if (current.compareTo(next) <= 0) return SExp.NIL;
+
+                    // next becomes current
+                    current = next;
+
+                    // advance to next argument
+                    arguments = arguments.cdr;
+                }
+
+                // all are decreasing, return true
+                return SExp.T;
+            }
+        };
+
+        // ---
+        // GTE
+        // ---
+
+        final SpecialFormEntry GTE = new SpecialFormEntry(
+            new Symbol(">="),
+            environment,
+            new FormHelpTopic(">=", "Greater than or equal to",
+                "(>= <number>*) => <result>",
+                "The value of > is true if the numbers are in monotonically "
+                    + "non-increasing order; otherwise it is false.",
+                "number", "a number",
+                "result", "a boolean"),
+            -2, Num.class)
+        {
+            public SExp call(SymbolTable symbolTable, Seq arguments)
+            throws LispException {
+
+                Num current;
+                Num next;
+
+                checkArguments(arguments);
+
+                // get first number
+                current = (Num) arguments.car;
+
+                // advance to next argument
+                arguments = arguments.cdr;
+
+                while(arguments != null) {
+                    // get next number
+                    next = (Num) arguments.car;
+
+                    // current < next, return false
+                    if (current.compareTo(next) < 0) return SExp.NIL;
+
+                    // next becomes current
+                    current = next;
+
+                    // advance to next argument
+                    arguments = arguments.cdr;
+                }
+
+                // all are non-increasing, return true
+                return SExp.T;
+            }
+        };
 
         // ---
         // DIV
@@ -59,7 +407,8 @@ public abstract class SpecialFormEntry extends FormEntry {
                     + "the number which is diveded.",
                 "divisor_1 ... divisor_n", "Divisors are the numbers dividing "
                     + "the dividend and may be any expression that evaluates "
-                    + "to a number."))
+                    + "to a number."),
+            -1, Num.class)
         {
             public SExp call(SymbolTable symbolTable, Seq arguments)
             throws LispException {
@@ -67,15 +416,10 @@ public abstract class SpecialFormEntry extends FormEntry {
                 Num dividend = new Num("1");
                 Num firstArg;
 
-                if (arguments == null)
-                    throw new InvalidArgumentQuantityException(
-                        "invalid number of arguments: 0");
+                checkArguments(arguments);
 
                 // case: only one argument: 1 / arg
-                try { firstArg = (Num) arguments.car.eval(symbolTable); }
-                catch (ClassCastException cce) {
-                    throw new TypeException(arguments.car, Num.class);
-                }
+                firstArg = (Num) arguments.car.eval(symbolTable);
 
                 dividend = dividend.divideBy(firstArg);
 
@@ -87,12 +431,8 @@ public abstract class SpecialFormEntry extends FormEntry {
 
                 // variable number of arguments [0..inf)
                 while (arguments != null) {
-                    try {
-                        dividend = dividend.divideBy(
-                            (Num) arguments.car.eval(symbolTable));
-                    } catch (ClassCastException cce) {
-                        throw new TypeException(arguments.car, Num.class);
-                    }
+                    dividend = dividend.divideBy(
+                        (Num) arguments.car.eval(symbolTable));
                     arguments = arguments.cdr;
                 }
 
@@ -119,25 +459,19 @@ public abstract class SpecialFormEntry extends FormEntry {
                     + "the number from which the others are subtracted.",
                 "subtrahend_1 ... subtrahend_n", "Subtrahends are numbers "
                     + "subtracted from the minuend and may be any expression "
-                    + "that evaluates to a number."))
+                    + "that evaluates to a number."),
+            -1, Num.class)
         {
             public SExp call(SymbolTable symbolTable, Seq arguments)
             throws LispException {
 
                 Num difference = new Num("0");
 
-                // need at least one argument
-                if (arguments == null)
-                    throw new InvalidArgumentQuantityException(
-                        "invalid number of arguments: 0");
+                checkArguments(arguments);
 
                 // case: only one argument: 0 - arg
-                try {
-                    difference = difference.subtract(
-                        (Num) arguments.car.eval(symbolTable));
-                } catch (ClassCastException cce) {
-                    throw new TypeException(arguments.car, Num.class);
-                }
+                difference = difference.subtract(
+                    (Num) arguments.car.eval(symbolTable));
 
                 arguments = arguments.cdr;
                 if (arguments == null) return difference;
@@ -147,12 +481,8 @@ public abstract class SpecialFormEntry extends FormEntry {
 
                 // variable number of arguments [0..inf)
                 while (arguments != null)  {
-                    try {
-                        difference = difference.subtract(
-                            (Num) arguments.car.eval(symbolTable));
-                    } catch (ClassCastException cce) {
-                        throw new TypeException(arguments.car, Num.class);
-                    }
+                    difference = difference.subtract(
+                        (Num) arguments.car.eval(symbolTable));
                     arguments = arguments.cdr;
                 }
 
@@ -174,7 +504,8 @@ public abstract class SpecialFormEntry extends FormEntry {
                     + "before being bound to function parameters. The"
                     + " expressions passed to multiply must evaluate to numbers.",
                 "multiplicand_1 ... multiplicand_n", "Multiplicands may be "
-                    + "any expression that evaluates to a number."))
+                    + "any expression that evaluates to a number."),
+            -1, Num.class)  // not technically correct, * accepts 0 arguments
         {
             public SExp call(SymbolTable symbolTable, Seq arguments)
             throws LispException {
@@ -210,7 +541,8 @@ public abstract class SpecialFormEntry extends FormEntry {
                     + "before being bound to function parameters. The"
                     + " expressions passed to sum must evaluate to numbers.",
                 "addend_1 ... addend_n", "Addends may be any expression that "
-                    + "evaluates to a number."))
+                    + "evaluates to a number."),
+            -1, Num.class)  // not technically correct, + accepts 0 arguments
         {
             public SExp call(SymbolTable symbolTable, Seq arguments)
             throws LispException {
@@ -250,7 +582,8 @@ public abstract class SpecialFormEntry extends FormEntry {
                     + "cdr of which is object-2.",
                 "object-1", "an object",
                 "object-2", "an object",
-                "cons", "a cons"))
+                "cons", "a cons"),
+            2, SExp.class)
         {
             public SExp call(SymbolTable symbolTable, Seq arguments)
             throws LispException {
@@ -258,9 +591,7 @@ public abstract class SpecialFormEntry extends FormEntry {
                 SExp object1, object2;
                 Cons cons;
 
-                if (arguments.length() != 2)
-                    throw new InvalidArgumentQuantityException(2,
-                        arguments.length());
+                checkArguments(arguments);
 
                 // get the two objects
                 object1 = arguments.car.eval(symbolTable);
@@ -287,7 +618,8 @@ public abstract class SpecialFormEntry extends FormEntry {
                 "param-list", "a list of symbols that will be bound in the "
                     + "function scope to the arguments passed to the function.",
                 "func-body", "an sexpression evaluated when the function is "
-                    + "called."))
+                    + "called."),
+            3, Symbol.class, List.class, SExp.class)
         {
             public SExp call(SymbolTable symbolTable, Seq arguments)
             throws LispException {
@@ -296,25 +628,18 @@ public abstract class SpecialFormEntry extends FormEntry {
                 ArrayList<Symbol> parameters = new ArrayList<Symbol>();
                 SExp body;
 
+                checkArguments(arguments);
+
                 // TODO: check to see if a function for this symbol exists
                 // and warn if so
 
-                if (arguments == null || arguments.length() != 3)
-                    new InvalidArgumentQuantityException(3, arguments.length());
-
                 // first argument: Symbol for function name
-                if (!(arguments.car instanceof Symbol))
-                    throw new TypeException(arguments.car, Symbol.class);
-
                 functionName = (Symbol) arguments.car;
 
                 // second argument, parameter list
                 arguments = arguments.cdr;
                 assert (arguments != null);
                 
-                //if (!(arguments.car instanceof List))
-                    // TODO: error, need parameter list
-
                 // read parameters
                 Seq paramSeq = ((List) arguments.car).seq;
                 while (paramSeq != null) {
@@ -350,7 +675,7 @@ public abstract class SpecialFormEntry extends FormEntry {
             new Symbol("DEFPARAMETER"),
             environment,
             new FormHelpTopic("DEFPARAMETER", "define a dynamic variable",
-                "(defparameter <name> <initial-value> [<documentation>]) => <name>",
+                "(defparameter <name> [<initial-value> [<documentation>]]) => <name>",
                 "defparameter establishes name as a dynamic variable. "
                     + "defparameter unconditionally assigns the initial-value "
                     + "to the dynamic variable named name (as opposed to "
@@ -359,7 +684,8 @@ public abstract class SpecialFormEntry extends FormEntry {
                     + "already bound.)",
                 "name", "a symbol; not evaluated. ",
                 "initial-value", "a form, always evaluated",
-                "documentation", "a string; not evaluated."))
+                "documentation", "a string; not evaluated."),
+            -1, Symbol.class, SExp.class, Str.class)
         {
             public SExp call(SymbolTable symbolTable, Seq arguments)
             throws LispException {
@@ -368,13 +694,9 @@ public abstract class SpecialFormEntry extends FormEntry {
                 SExp initValue = null;
                 HelpTopic helpinfo = null;
 
-                if (arguments == null)
-                    throw new InvalidArgumentQuantityException(0);
+                checkArguments(arguments);
 
                 // first argument: variable name
-                if (!(arguments.car instanceof Symbol))
-                    throw new TypeException(arguments.car, Symbol.class);
-
                 name = (Symbol) arguments.car;
 
                 // second argument: initial value
@@ -384,13 +706,9 @@ public abstract class SpecialFormEntry extends FormEntry {
                 
                     // third argument: documentation
                     arguments = arguments.cdr;
-                    if (arguments != null) {
-                        if (!(arguments.car instanceof Str))
-                            throw new TypeException(arguments.car, Str.class);
-
+                    if (arguments != null) 
                         helpinfo = new HelpTopic(name.toString(), "variable", 
                             ((Str) arguments.car).value);
-                    }
                 }
 
                 symbolTable.bind(name,
@@ -418,7 +736,8 @@ public abstract class SpecialFormEntry extends FormEntry {
                 "name", "a symbol; not evaluated. ",
                 "initial-value", "a form, evaluated only if name is not "
                     + "already bound.",
-                "documentation", "a string; not evaluated."))
+                "documentation", "a string; not evaluated."),
+            -1, Symbol.class, SExp.class, Str.class)
         {
             public SExp call(SymbolTable symbolTable, Seq arguments)
             throws LispException {
@@ -427,13 +746,9 @@ public abstract class SpecialFormEntry extends FormEntry {
                 SExp initValue = null;
                 HelpTopic helpinfo = null;
 
-                if (arguments == null)
-                    throw new InvalidArgumentQuantityException(0);
+                checkArguments(arguments);
 
                 // first argument: variable name
-                if (!(arguments.car instanceof Symbol))
-                    throw new TypeException(arguments.car, Symbol.class);
-
                 name = (Symbol) arguments.car;
 
                 // if this variable is already defined, return without
@@ -459,7 +774,7 @@ public abstract class SpecialFormEntry extends FormEntry {
                     + "representation of the abstract syntax tree generated "
                     + "by the parser for each sexpression it parses.",
                 "enable", "NIL = disabled, anything else = enabled. No "
-                    + "argument = enabled."))
+                    + "argument = enabled."), -1)
         {
             public SExp call(SymbolTable symbolTable, Seq arguments)
             throws LispException {
@@ -470,7 +785,7 @@ public abstract class SpecialFormEntry extends FormEntry {
 
                 SExp retVal = arguments.car.eval(symbolTable);
 
-                if (retVal != null) environment.dumpAST = true;
+                if (retVal != null && retVal != SExp.NIL) environment.dumpAST = true;
                 else environment.dumpAST = false;
 
                 return retVal;
@@ -490,17 +805,14 @@ public abstract class SpecialFormEntry extends FormEntry {
                     + " as an argument. #'funcname is equivalent to (function "
                     + " funcname).",
                 "func-name", "a symbol naming a function",
-                "function", "a function"))
+                "function", "a function"),
+            1, Symbol.class)
         {
             public SExp call(SymbolTable symbolTable, Seq arguments) 
             throws LispException {
                 FormEntry fe = null;
 
-                if (arguments == null || arguments.length() != 1)
-                    throw new InvalidArgumentQuantityException(1);
-
-                if (!(arguments.car instanceof Symbol))
-                    throw new TypeException(arguments.car, Symbol.class);
+                checkArguments(arguments);
 
                 fe = symbolTable.lookupFunction((Symbol) arguments.car);
 
@@ -525,14 +837,13 @@ public abstract class SpecialFormEntry extends FormEntry {
                     + "functional value in the global environment.",
                 "function", "a function designator",
                 "arg", "an object",
-                "results", "the result of the function call"))
+                "results", "the result of the function call"),
+            -1, SExp.class)
         {
             public SExp call(SymbolTable symbolTable, Seq arguments)
             throws LispException {
 
-                if (arguments == null)
-                    throw new InvalidArgumentQuantityException(
-                        "form requires at least one argument.");
+                checkArguments(arguments);
 
                 // first argument: function designator
                 SExp func = arguments.car.eval(symbolTable);
@@ -576,7 +887,8 @@ public abstract class SpecialFormEntry extends FormEntry {
                 "plist", "a property list.",
                 "indicator", "an object",
                 "default", "an object. The default is NIL",
-                "value", "an object"))
+                "value", "an object"),
+            -2, List.class, SExp.class, SExp.class)
         {
             public SExp call(SymbolTable symbolTable, Seq arguments)
             throws LispException {
@@ -586,16 +898,10 @@ public abstract class SpecialFormEntry extends FormEntry {
                 SExp indicator;
                 SExp retVal = SExp.NIL;
 
-                // check number of arguments
-                if (arguments.length() < 2)
-                    throw new InvalidArgumentQuantityException(
-                        "form requires at least 2 arguments.");
+                checkArguments(arguments);
 
                 // first argument: property list
                 plistEval = arguments.car.eval(symbolTable);
-                if (!(plistEval instanceof List))
-                    throw new TypeException(arguments.car, List.class);
-
                 plistSeq = ((List) plistEval).seq;
 
                 // second argument: indicator
@@ -634,7 +940,8 @@ public abstract class SpecialFormEntry extends FormEntry {
                 "(help [<topic>*])",
                 null,
                 "topic",
-                "either a string representing the topic to lookup or a symbol"))
+                "either a string representing the topic to lookup or a symbol"),
+            -1, SExp.class) // technically can accept 0 arguments
         {
             public SExp call(SymbolTable symbolTable, Seq arguments)
             throws LispException {
@@ -694,13 +1001,13 @@ public abstract class SpecialFormEntry extends FormEntry {
                 "else-form", "a form. The default is nil. ",
                 "results", "if the test-form yielded true, the values "
                     + "returned by the then-form; otherwise, the values "
-                    + "returned by the else-form."))
+                    + "returned by the else-form."),
+            -2, SExp.class)
         {
             public SExp call(SymbolTable symbolTable, Seq arguments) 
             throws LispException {
-                if (arguments == null || arguments.length() < 2)
-                    throw new InvalidArgumentQuantityException(
-                        2, arguments == null ? 0 : arguments.length());
+
+                checkArguments(arguments);
 
                 // evaluate test form
                 SExp testResult = arguments.car.eval(symbolTable);
@@ -709,9 +1016,10 @@ public abstract class SpecialFormEntry extends FormEntry {
                 arguments = arguments.cdr;
 
                 // if false, advance to else-form
-                if (testResult == null) arguments = arguments.cdr;
+                if (testResult == null || testResult == SExp.NIL) arguments = arguments.cdr;
 
-                if (arguments == null) return arguments;
+                if (arguments == null) return SExp.NIL;
+
                 return arguments.eval(symbolTable);
             }
         };
@@ -729,7 +1037,8 @@ public abstract class SpecialFormEntry extends FormEntry {
                 "",
                 "param-list", "a list of symbols",
                 "form", "a form",
-                "lambda", "a function"))
+                "lambda", "a function"),
+            2, List.class, SExp.class)
         {
             public SExp call(SymbolTable symbolTable, Seq arguments)
             throws LispException {
@@ -738,14 +1047,9 @@ public abstract class SpecialFormEntry extends FormEntry {
                 SExp body;
                 Seq paramSeq;
 
-                if (arguments.length() != 2)
-                    throw new InvalidArgumentQuantityException(
-                        2, arguments.length());
+                checkArguments(arguments);
 
                 // first parameter: parameters to the lambda
-                if (!(arguments.car instanceof List))
-                    throw new TypeException(arguments.car, List.class);
-
                 paramSeq = ((List) arguments.car).seq;
                 while (paramSeq != null) {
                     if (!(paramSeq.car instanceof Symbol))
@@ -765,7 +1069,6 @@ public abstract class SpecialFormEntry extends FormEntry {
                     body, symbolTable);
             }
         };
-
 
         // ---
         // LET
@@ -791,7 +1094,8 @@ public abstract class SpecialFormEntry extends FormEntry {
                 "var", "a symbol",
                 "init-form", "a form",
                 "form", "a form",
-                "result", "the value returned by the last form"))
+                "result", "the value returned by the last form"),
+            -1, List.class, SExp.class) 
         {
             public SExp call(SymbolTable symbolTable, Seq arguments)
             throws LispException {
@@ -802,12 +1106,7 @@ public abstract class SpecialFormEntry extends FormEntry {
                 ArrayList<SExp> values = new ArrayList<SExp>();
                 SExp retVal = SExp.NIL;
 
-                if (arguments == null)
-                    throw new InvalidArgumentQuantityException(0);
-
-                if (!(arguments.car instanceof List))
-                    throw new LispException("Malformed LET bindings: "
-                        + arguments.car.toString());
+                checkArguments(arguments);
 
                 letBinding = ((List) arguments.car).seq;
 
@@ -881,7 +1180,8 @@ public abstract class SpecialFormEntry extends FormEntry {
                 "var", "a symbol",
                 "init-form", "a form",
                 "form", "a form",
-                "result", "the value returned by the last form"))
+                "result", "the value returned by the last form"),
+            -1, List.class, SExp.class)
         {
             public SExp call(SymbolTable symbolTable, Seq arguments)
             throws LispException {
@@ -892,12 +1192,7 @@ public abstract class SpecialFormEntry extends FormEntry {
                 SExp initvalue;
                 SExp retVal = SExp.NIL;
 
-                if (arguments == null)
-                    throw new InvalidArgumentQuantityException(0);
-
-                if (!(arguments.car instanceof List))
-                    throw new LispException("Malformed LET bindings: "
-                        + arguments.car.toString());
+                checkArguments(arguments);
 
                 letBinding = ((List) arguments.car).seq;
 
@@ -957,7 +1252,8 @@ public abstract class SpecialFormEntry extends FormEntry {
                 "(list <object>*) => list",
                 "list returns a list containing the supplied objects.",
                 "object", "an object.",
-                "list", "a list."))
+                "list", "a list."),
+            -1, SExp.class) // actually accepts 0 or more args, not 1 or more
         {
             public SExp call(SymbolTable symbolTable, Seq arguments)
             throws LispException {
@@ -994,7 +1290,8 @@ public abstract class SpecialFormEntry extends FormEntry {
                 "The quote special operator just returns object. The "
                 + "consequences are undefined if literal objects (including "
                 + "quoted objects) are destructively modified. ",
-                "object", "an object; not evaluated."))
+                "object", "an object; not evaluated."),
+            1, SExp.class)
         {
             public SExp call(SymbolTable symbolTable, Seq arguments)
             throws LispException {
@@ -1021,7 +1318,8 @@ public abstract class SpecialFormEntry extends FormEntry {
                     + "within that progn are considered by the compiler to be "
                     + "top level forms. ",
                 "form", "a list of forms",
-                "result", "the value of the last form"))
+                "result", "the value of the last form"),
+            -1, SExp.class) // actually accepts 0 or more args
         {
             public SExp call(SymbolTable symbolTable, Seq arguments)
             throws LispException {
@@ -1058,7 +1356,8 @@ public abstract class SpecialFormEntry extends FormEntry {
                     + "(not setq) had been used. ",
                 "name",
                 "a symbol naming a variable other than a constant variable",
-                "form", "a form"))
+                "form", "a form"),
+            -1, SExp.class) //actually accepts an even number of args
         {
             public SExp call(SymbolTable symbolTable, Seq arguments)
             throws LispException {
@@ -1110,8 +1409,9 @@ public abstract class SpecialFormEntry extends FormEntry {
                 "enable trace information for a function",
                 "(trace <funcname>)",
                 "Turn on trace information for a function.",
-                "funcname", "the name of the function to trace"))
-         {
+                "funcname", "the name of the function to trace"),
+            -1, Symbol.class) //actually accepts 0 or 1 arg
+        {
             public SExp call(SymbolTable symbolTable, Seq arguments)
             throws LispException {
 
@@ -1135,8 +1435,34 @@ public abstract class SpecialFormEntry extends FormEntry {
 
                 return SExp.NIL;
             }
-         };
+        };
 
+        // ----
+        // QUIT
+        // ----
+
+        final SpecialFormEntry QUIT = new SpecialFormEntry(
+            new Symbol("QUIT"),
+            environment,
+            new FormHelpTopic("QUIT", "Exit the interpreter.",
+                "(quit)",
+                ""),
+            0, SExp.class)
+        {
+            public SExp call(SymbolTable symbolTable, Seq arguments)
+            throws LispException {
+                checkArguments(arguments);
+                environment.signalStop();
+                return SExp.NIL;
+            }
+        };
+
+        environment.globalSymbolTable.bind(LTE.name, LTE);
+        environment.globalSymbolTable.bind(LT.name, LT);
+        environment.globalSymbolTable.bind(NUMEQ.name, NUMEQ);
+        environment.globalSymbolTable.bind(NUMNOTEQ.name, NUMNOTEQ);
+        environment.globalSymbolTable.bind(GT.name, GT);
+        environment.globalSymbolTable.bind(GTE.name, GTE);
         environment.globalSymbolTable.bind(DIF.name, DIF);
         environment.globalSymbolTable.bind(DIV.name, DIV);
         environment.globalSymbolTable.bind(MUL.name, MUL);
@@ -1159,5 +1485,6 @@ public abstract class SpecialFormEntry extends FormEntry {
         environment.globalSymbolTable.bind(PROGN.name, PROGN);
         environment.globalSymbolTable.bind(SETQ.name, SETQ);
         environment.globalSymbolTable.bind(TRACE.name, TRACE);
+        environment.globalSymbolTable.bind(QUIT.name, QUIT);
     }
 }
