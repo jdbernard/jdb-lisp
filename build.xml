@@ -29,7 +29,7 @@
         <mkdir dir="${grammar.output.dir}"/>
         <javacc
             target="${grammar.file}"
-            javacchome="/usr/share/java"
+            javacchome="${javacc.home}"
             outputdirectory="${grammar.output.dir}"/>
     </target>
 
