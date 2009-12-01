@@ -7,16 +7,16 @@ package edu.utexas.cs345.jdblisp;
  */
 public class InvalidArgumentQuantityException extends LispException {
 
-    public InvalidArgumentQuantityException(int expected, int actual) {
-        super ("Invalid number of arguments: " + actual
+    public InvalidArgumentQuantityException(String invokeName, int expected, int actual) {
+        super ("Invalid number of arguments to " + invokeName + ": " + actual
             + " (expected " + expected + ").");
     }
 
-    public InvalidArgumentQuantityException(int actual) {
-        super ("Invalid number of arguments: " + actual);
+    public InvalidArgumentQuantityException(String invokeName, int expected) {
+        super ("Invalid number of arguments to " + invokeName + ": expected " + expected);
     }
 
-    public InvalidArgumentQuantityException(String message) {
-        super ("Invalid number of arguments: " + message);
+    public InvalidArgumentQuantityException(String invokeName, String message) {
+        super ("Invalid number of arguments to " + invokeName + ": " + message);
     }
 }

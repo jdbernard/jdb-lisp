@@ -13,26 +13,26 @@ public class FunctionEntry extends FormEntry {
 
     //private Logger traceLog = Logger.getLogger(getClass());
 
-    public FunctionEntry(Symbol name, Symbol[] parameters, SExp body) {
-        super(name, null);
+    public FunctionEntry(Symbol symbol, Symbol[] parameters, SExp body) {
+        super(symbol, null);
 
         // build invocation help string
-        String invokation = "(" + name.name;
+        String invokation = "(" + symbol.name;
         for (Symbol param : parameters) invokation += " <" + param.name + ">";
         invokation += ")";
         String bodyInfo = "Function body: " + body.toString();
 
         // build help topic
-        FormHelpTopic helpinfo = new FormHelpTopic(name.name, null, invokation, bodyInfo);
+        FormHelpTopic helpinfo = new FormHelpTopic(symbol.name, null, invokation, bodyInfo);
 
         this.parameters = parameters;
         this.body = body;
         this.helpinfo = helpinfo;
     }
 
-    public FunctionEntry(Symbol name, Symbol[] parameters, SExp body,
+    public FunctionEntry(Symbol symbol, Symbol[] parameters, SExp body,
     HelpTopic helpinfo) {
-        super(name, helpinfo);
+        super(symbol, helpinfo);
         this.parameters = parameters;
         this.body = body;
     }
@@ -42,10 +42,10 @@ public class FunctionEntry extends FormEntry {
     public void enableTrace(boolean enable) { this.traceEnabled = enable; }
 
     public String display(String offset) {
-        return offset + "Function: " + name.toString();
+        return offset + "Function: " + symbol.toString();
     }
 
-    public String toString() { return "<FUNCTION " + name.toString() + ">"; }
+    public String toString() { return "<FUNCTION " + symbol.toString() + ">"; }
 
     public SExp call(SymbolTable symbolTable, Seq arguments) throws LispException {
 
@@ -53,7 +53,7 @@ public class FunctionEntry extends FormEntry {
         SExp evaluatedArg, retVal;
 
         if (traceEnabled)
-            traceString = "(" + name.name;
+            traceString = "(" + symbol.name;
 
         // bind arguments to parameters
         SymbolTable localScope = new SymbolTable(symbolTable);
@@ -63,11 +63,12 @@ public class FunctionEntry extends FormEntry {
             // too few arguments
             if (arguments == null)
                 throw new InvalidArgumentQuantityException(
-                    parameters.length, i);
+                    toString(), parameters.length, i);
 
             // bind one arg to param
             evaluatedArg = arguments.car.eval(symbolTable);
-            localScope.bind(parameters[i], new VariableEntry(evaluatedArg));
+            localScope.bind(parameters[i], new VariableEntry(parameters[i],
+                evaluatedArg));
 
             if (traceEnabled) traceString += " " + evaluatedArg.toString();
 
@@ -77,8 +78,8 @@ public class FunctionEntry extends FormEntry {
 
         // too many arguments
         if (arguments != null)
-            throw new InvalidArgumentQuantityException(parameters.length,
-                (i + arguments.length()));
+            throw new InvalidArgumentQuantityException(
+                toString(),parameters.length, (i + arguments.length()));
 
         if (traceEnabled) traceString += ")";
         if (traceEnabled) System.out.println(traceString);
@@ -87,7 +88,7 @@ public class FunctionEntry extends FormEntry {
         retVal = body.eval(localScope);
 
         if (traceEnabled)
-            traceString = name.name + " returned " + retVal.toString();
+            traceString = symbol.name + " returned " + retVal.toString();
         if (traceEnabled) System.out.println(traceString);
 
         return retVal;

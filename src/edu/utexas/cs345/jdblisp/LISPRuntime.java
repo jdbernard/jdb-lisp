@@ -122,9 +122,11 @@ public class LISPRuntime {
     void signalStop() { stop = true; }
 
     private static SymbolTable defineGlobalConstants() {
+        Symbol T = new Symbol("T");
+        Symbol NIL = new Symbol("NIL");
         SymbolTable constantsTable = new SymbolTable();
-        constantsTable.bind(new Symbol("T"), new VariableEntry(SExp.T, true));
-        constantsTable.bind(new Symbol("NIL"), new VariableEntry(SExp.NIL, true));
+        constantsTable.bind(T, new VariableEntry(T, SExp.T, true));
+        constantsTable.bind(NIL, new VariableEntry(NIL, SExp.NIL, true));
 
         return constantsTable;
     }

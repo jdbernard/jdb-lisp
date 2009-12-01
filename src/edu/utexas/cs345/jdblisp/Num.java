@@ -75,6 +75,10 @@ public class Num implements SExp, Comparable<Num> {
         return new Num(n.abs());
     }
 
+    public Num remainder(Num divisor) {
+        return new Num(n.remainder(divisor.n));
+    }
+
     @Override
     public int compareTo(Num that) {
         return this.n.compareTo(that.n);

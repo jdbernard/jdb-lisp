@@ -4,13 +4,13 @@ package edu.utexas.cs345.jdblisp;
  * FormEntry
  * @author Jonathan Bernard(jdbernard@gmail.com)
  */
-public abstract class FormEntry implements SExp {
+public abstract class FormEntry implements SExp, SymbolTableEntry {
 
-    public final Symbol name;
+    public final Symbol symbol;
     public HelpTopic helpinfo;
 
-    public FormEntry(Symbol name, HelpTopic helpinfo) {
-        this.name = name;
+    public FormEntry(Symbol symbol, HelpTopic helpinfo) {
+        this.symbol = symbol;
         this.helpinfo = helpinfo;
     }
 
@@ -19,4 +19,5 @@ public abstract class FormEntry implements SExp {
 
     public SExp eval(SymbolTable symbolTable) { return this; }
 
+    public Symbol symbol() { return symbol; }
 }
