@@ -2,6 +2,7 @@ package edu.utexas.cs345.jdblisp;
 
 import java.io.PrintWriter;
 import java.util.ArrayList;
+import java.util.LinkedList;
 
 /**
  * SpecialFormEntry
@@ -53,9 +54,11 @@ public abstract class SpecialFormEntry extends FormEntry {
     static final Symbol GETF                = new Symbol("GETF");
     static final Symbol HELP                = new Symbol("HELP");
     static final Symbol IF                  = new Symbol("IF");
+    static final Symbol LABELS              = new Symbol("LABELS");
     static final Symbol LAMBDA              = new Symbol("LAMBDA");
     static final Symbol LET                 = new Symbol("LET");
     static final Symbol LET_STAR            = new Symbol("LET*");
+    static final Symbol LETREC              = new Symbol("LETREC");
     static final Symbol LIST                = new Symbol("LIST");
     static final Symbol MOD                 = new Symbol("MOD");
     static final Symbol QUOTE               = new Symbol("QUOTE");
@@ -1016,6 +1019,103 @@ public abstract class SpecialFormEntry extends FormEntry {
         };
 
         // ------
+        // LABELS
+        // ------
+
+        final SpecialFormEntry LABELS = new SpecialFormEntry(
+            SpecialFormEntry.LABELS, environment,
+            new FormHelpTopic("LABELS", "recursive function definition",
+                "(labels ((function-name (param*) local-form*)*) form*) => "
+                    + "result",
+                "labels defines locally named functions and executes a series "
+                    + "of forms with these definition bindings. Any number of "
+                    + "such local functions can be defined. The scope of the "
+                    + "defined function names for labels encompasses the "
+                    + "function definitions themselves as well as the body.",
+                "function-name", "a symbol",
+                "param", "a symbol",
+                "local-form", "a form (the list of local-forms is an implicit "
+                    + "progn.",
+                "form", "a form (the list of forms is an implicit progn."))
+        {
+            public SExp call(SymbolTable symbolTable, Seq arguments)
+            throws LispException {
+
+                ArrayList<FormEntry> localFunctions = new ArrayList<FormEntry>();
+                ArrayList<Symbol> params;
+                LinkedList<SExp> localForms;
+                Seq labelsSeq, defunSeq, paramSeq;
+                SExp funcBody, result = SExp.NIL;
+                Symbol funcName;
+                SymbolTable newScope;
+
+                if (arguments == null)
+                    throw new InvalidArgumentQuantityException(toString(),
+                        "at least one argument is required.");
+
+                labelsSeq = TypeUtil.attemptCast(List.class, arguments.car).seq;
+
+                // parse each local function definition
+                while (labelsSeq != null) {
+                    defunSeq = TypeUtil.attemptCast(List.class,
+                        labelsSeq.car).seq;
+
+                    if (defunSeq == null || defunSeq.length() < 3)
+                        throw new LispException("Malformed LABELS expression: "
+                            + "function definition list is incomplete.");
+
+                    funcName = TypeUtil.attemptCast(Symbol.class, defunSeq.car);
+                    defunSeq = defunSeq.cdr;
+                    paramSeq = TypeUtil.attemptCast(List.class,
+                        defunSeq.car).seq;
+                    defunSeq = defunSeq.cdr;
+
+                    // capture each parameter to this function
+                    params = new ArrayList<Symbol>();
+                    while (paramSeq != null) {
+                        params.add(TypeUtil.attemptCast(Symbol.class,
+                            paramSeq.car));
+                        paramSeq = paramSeq.cdr;
+                    }
+
+                    // capture each local form
+                    localForms = new LinkedList<SExp>();
+                    while(defunSeq != null) {
+                        localForms.add(defunSeq.car);
+                        defunSeq = defunSeq.cdr;
+                    }
+
+                    // create the implicit PROGN
+                    localForms.addFirst(SpecialFormEntry.PROGN);
+                    funcBody = new List(new Seq(
+                        localForms.toArray(new SExp[]{})));
+
+                    // create the FunctionEntry
+                    localFunctions.add(new FunctionEntry(funcName,
+                        params.toArray(new Symbol[]{}), funcBody));
+
+                    // next function definition
+                    labelsSeq = labelsSeq.cdr;
+                }
+
+                // create the new scope to include the new function definitions
+                newScope = new SymbolTable(symbolTable);
+                for (FormEntry fe : localFunctions)
+                    newScope.bind(fe.symbol, fe);
+
+                // advance to the body of the LABELS form, the implicit PROGN
+                // of forms
+                arguments = arguments.cdr;
+                while (arguments != null) {
+                    result = arguments.car.eval(newScope);
+                    arguments = arguments.cdr;
+                }
+
+                return result;
+            }
+        };
+
+        // ------
         // LAMBDA
         // ------
 
@@ -1226,6 +1326,13 @@ public abstract class SpecialFormEntry extends FormEntry {
                 return retVal;
             }
         };
+
+        // ------
+        // LETREC
+        // ------
+
+        // This is a Scheme function. It exists in CLISP as LABELS. The 
+        // special form in JLisp is provided as an alias for LABELS
 
         // ----
         // LIST
@@ -1484,9 +1591,11 @@ public abstract class SpecialFormEntry extends FormEntry {
         environment.globalSymbolTable.bind(GETF.symbol, GETF);
         environment.globalSymbolTable.bind(HELP.symbol, HELP);
         environment.globalSymbolTable.bind(IF.symbol, IF);
+        environment.globalSymbolTable.bind(LABELS.symbol, LABELS);
         environment.globalSymbolTable.bind(LAMBDA.symbol, LAMBDA);
         environment.globalSymbolTable.bind(LET.symbol, LET);
         environment.globalSymbolTable.bind(LET_STAR.symbol, LET_STAR);
+        environment.globalSymbolTable.bind(SpecialFormEntry.LETREC, LABELS);
         environment.globalSymbolTable.bind(LIST.symbol, LIST);
         environment.globalSymbolTable.bind(MOD.symbol, MOD);
         environment.globalSymbolTable.bind(QUOTE.symbol, QUOTE);
