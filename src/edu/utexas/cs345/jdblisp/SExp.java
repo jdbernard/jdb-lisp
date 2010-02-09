@@ -25,6 +25,16 @@ public interface SExp {
         public SExp eval(SymbolTable table) { return this; }
         public String display(String offset) { return offset + "NIL\n"; }
         public String toString() { return "NIL"; }
+        public boolean equals(Object that) {
+            if (this == that) return true;
+            // empty list is also null. This is not just at the parser level!
+            // It can happen when peeling entries off a list
+            // ie. (NOT (CAR '())) should return T
+            else if (that instanceof List && ((List) that).seq == null)
+                return true;
+
+            return false;
+        }
     };
 
 }

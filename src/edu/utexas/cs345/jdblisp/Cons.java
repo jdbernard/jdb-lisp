@@ -12,8 +12,8 @@ public class Cons extends Seq {
         super(car, (cdr == null ||
                     cdr == SExp.NIL ||
                     !(cdr instanceof Seq) ?
-                        null : (Seq) cdr));
-        this.cdr = (cdr == SExp.NIL ? null : cdr);
+                        SExp.NIL : (Seq) cdr));
+        this.cdr = cdr;
     }
 
     public Cons(SExp car, List list) {
@@ -32,7 +32,7 @@ public class Cons extends Seq {
         
         sb.append(car.display(offset + "  "));
 
-        if (cdr != null) sb.append(cdr.display(offset));
+        if (cdr != SExp.NIL) sb.append(cdr.display(offset));
 
         return sb.toString();
     }
@@ -40,7 +40,7 @@ public class Cons extends Seq {
     @Override
     public String toString() {
         if (this.cdr == super.cdr) return super.toString();
-
+        else if (this.cdr == SExp.NIL) return car.toString();
         else return car.toString() + " . " + cdr.toString();
     }
 }

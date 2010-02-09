@@ -61,6 +61,8 @@ public abstract class SpecialFormEntry extends FormEntry {
     static final Symbol LETREC              = new Symbol("LETREC");
     static final Symbol LIST                = new Symbol("LIST");
     static final Symbol MOD                 = new Symbol("MOD");
+    static final Symbol NOT                 = new Symbol("NOT");
+    static final Symbol NULL                = new Symbol("NULL?");
     static final Symbol QUOTE               = new Symbol("QUOTE");
     static final Symbol PROGN               = new Symbol("PROGN");
     static final Symbol REM                 = new Symbol("REM");
@@ -551,13 +553,71 @@ public abstract class SpecialFormEntry extends FormEntry {
         // CAR
         // ---
 
-        // TODO
+        final SpecialFormEntry CAR = new SpecialFormEntry(
+            SpecialFormEntry.CAR, environment,
+            new FormHelpTopic("CAR", "get first element of a list",
+                "(car <List>) => <SExp>",
+                "Return the first element of a List or Cons",
+                "List", "a list",
+                "car", "an sexp"))
+        {
+            public SExp call(SymbolTable symbolTable, Seq arguments)
+            throws LispException {
+     
+                if (arguments == null)
+                    throw new InvalidArgumentQuantityException(toString(), 1);
+
+                SExp evaluatedArg = arguments.car.eval(symbolTable);
+
+                // check for NIL case
+                if (SExp.NIL.equals(evaluatedArg)) return SExp.NIL;
+
+                // TypeUtil.attemptCast is not quite good enough here, we need
+                // to check against two possible classes.
+                if (evaluatedArg instanceof List) 
+                    return ((List) evaluatedArg).seq.car;
+
+                // rare use case, but possible and the CL spec says it should still accept
+                else if (evaluatedArg instanceof Seq) 
+                    return ((Seq) evaluatedArg).car;
+                else throw new TypeException(arguments.car, List.class);
+            }
+        };   
 
         // ---
         // CDR
         // ---
 
-        // TODO
+        final SpecialFormEntry CDR = new SpecialFormEntry(
+            SpecialFormEntry.CDR, environment,
+            new FormHelpTopic("CDR", "get the cdr of a list or cons",
+                "(cdr <List>) => <SExp>",
+                "Returns the cdr of a List or Cons",
+                "List", "a list",
+                "cdr", "an sexp"))
+        {
+            public SExp call(SymbolTable symbolTable, Seq arguments)
+            throws LispException {
+     
+                if (arguments == null)
+                    throw new InvalidArgumentQuantityException(toString(), 1);
+
+                SExp evaluatedArg = arguments.car.eval(symbolTable);
+
+                // check for NIL case
+                if (SExp.NIL.equals(evaluatedArg)) return SExp.NIL;
+
+                // TypeUtil.attemptCast is not quite good enough here, we need
+                // to check against two possible classes.
+                if (evaluatedArg instanceof List) 
+                    return new List(((List) evaluatedArg).seq.cdr);
+
+                // rare use case, but possible and the CL spec says it should still accept
+                else if (evaluatedArg instanceof Seq)
+                    return ((Seq) evaluatedArg).cdr;
+                else throw new TypeException(arguments.car, List.class);
+            }
+        };   
 
         // ----
         // CONS
@@ -1375,7 +1435,7 @@ public abstract class SpecialFormEntry extends FormEntry {
 
         // TODO: this does not follow the Common Lisp standard (which requires
         // FLOOR, TRUNCATE, and others to be defined). Fix in future when the
-        // required functionsa re defined.
+        // required functions are defined.
         final SpecialFormEntry MOD = new SpecialFormEntry(
             SpecialFormEntry.MOD, environment,
             new FormHelpTopic("MOD", "modulus",
@@ -1405,6 +1465,29 @@ public abstract class SpecialFormEntry extends FormEntry {
             }
         };
 
+        // ---
+        // NOT (also mapped to NULL?)
+        // ---
+
+        final SpecialFormEntry NOT = new SpecialFormEntry(
+            SpecialFormEntry.NOT, environment,
+            new FormHelpTopic("NOT", "Returns t if x is false; otherwise, "
+                + "returns nil.",
+                "(not <object>) => <object>",
+                "The not operator returns T iff the object passed as a "
+                + " parameter is equal to NIL and NIL otherwise.",
+                "object", "a generalized boolean (any object)"))
+        {
+            public SExp call(SymbolTable symbolTable, Seq arguments) 
+            throws LispException {
+                if (arguments == null || arguments.length() != 1)
+                    throw new InvalidArgumentQuantityException(toString(), 1);
+
+                if (SExp.NIL.equals(arguments.car.eval(symbolTable)))
+                    return SExp.T;
+                else return SExp.NIL;
+            }
+        };
         // -----
         // QUOTE
         // -----
@@ -1581,6 +1664,8 @@ public abstract class SpecialFormEntry extends FormEntry {
         environment.globalSymbolTable.bind(DIV.symbol, DIV);
         environment.globalSymbolTable.bind(MUL.symbol, MUL);
         environment.globalSymbolTable.bind(SUM.symbol, SUM);
+        environment.globalSymbolTable.bind(CAR.symbol, CAR);
+        environment.globalSymbolTable.bind(CDR.symbol, CDR);
         environment.globalSymbolTable.bind(CONS.symbol, CONS);
         environment.globalSymbolTable.bind(DEFUN.symbol, DEFUN);
         environment.globalSymbolTable.bind(DEFPARAM.symbol, DEFPARAM);
@@ -1595,9 +1680,16 @@ public abstract class SpecialFormEntry extends FormEntry {
         environment.globalSymbolTable.bind(LAMBDA.symbol, LAMBDA);
         environment.globalSymbolTable.bind(LET.symbol, LET);
         environment.globalSymbolTable.bind(LET_STAR.symbol, LET_STAR);
-        environment.globalSymbolTable.bind(SpecialFormEntry.LETREC, LABELS);
+
+        // map LETREC to LABELS (not quite honest. Scheme's LETREC allows you
+        // to define variables and functions with LETRECT. In CL, LABELS allows
+        // you to recursively define functions only. LET* allows you to
+        // recursively define variables).
+        environment.globalSymbolTable.bind(SpecialFormEntry.LETREC, LABELS); 
         environment.globalSymbolTable.bind(LIST.symbol, LIST);
         environment.globalSymbolTable.bind(MOD.symbol, MOD);
+        environment.globalSymbolTable.bind(NOT.symbol, NOT);
+        environment.globalSymbolTable.bind(SpecialFormEntry.NULL, NOT);
         environment.globalSymbolTable.bind(QUOTE.symbol, QUOTE);
         environment.globalSymbolTable.bind(PROGN.symbol, PROGN);
         environment.globalSymbolTable.bind(SETQ.symbol, SETQ);
